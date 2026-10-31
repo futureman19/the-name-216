@@ -54,7 +54,7 @@ def tick(dur=0.03, f=1187.0, gain=0.05):
     env = np.sin(np.pi * np.arange(n) / n)
     return (gain * env * np.sin(2 * np.pi * f * np.arange(n) / SR)).astype(np.float32)
 
-total_s = GATHER + 12 * BREATH + 4 * SI_S + 6.0
+total_s = GATHER + 12 * BREATH + 4 * SI_S + 10.0
 track = np.zeros(int(total_s * SR), np.float32)
 def place(a, t):
     i = int(t * SR); j = min(len(track), i + len(a))
@@ -78,11 +78,43 @@ for b in range(12):
         sil_windows.append((t_b, t_b + SI_S))
         t_b += SI_S
 
-# completion: all nine harmonics stacked, slow fade
-chord = np.zeros(int(3.0 * SR), np.float32)
-for d in range(1, 10):
-    chord += note(d, dur=3.0, gain=0.30 / d ** 0.5)
+# completion: the shofar — natural-horn voicing of the 9-harmonic stack
+# (measured from a real shofar: strong mid partials, breath noise,
+#  lip-buzz growl at the fundamental, ~5 Hz vibrato drift, long held blast)
+def shofar_chord(dur=6.0, gain=0.30):
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    vib = 1 + 0.004 * np.sin(2 * np.pi * 4.7 * t) + 0.0025 * np.sin(2 * np.pi * 0.31 * t)
+    w = np.array([.35, .50, .70, .85, 1.0, .95, .90, .80, .60])   # mid-partial bump
+    growl = 1 + 0.15 * np.sin(2 * np.pi * F0 * t)                  # lip-buzz AM
+    a = np.zeros(n, np.float32)
+    for d in range(1, 10):
+        ph = np.cumsum(2 * np.pi * d * F0 * vib / SR)              # instantaneous phase
+        a += w[d - 1] * np.sin(ph).astype(np.float32)
+    a *= growl
+    rng = np.random.default_rng(216)
+    noise = rng.standard_normal(n).astype(np.float32)
+    b = np.sin(2 * np.pi * 950 * np.arange(n) / SR)
+    noise = np.convolve(noise, np.array([.25, .5, .25]), mode='same') * b * 0.02
+    atk = int(0.06 * SR)
+    env = np.ones(n, np.float32)
+    env[:atk] = np.linspace(0, 1.15, atk)                          # blat with overshoot
+    env[int(.8 * n):] *= np.linspace(1, 1.12, n - int(.8 * n))     # tekiah lift at the end
+    rel = int(0.5 * SR)
+    env[-rel:] *= np.linspace(1.12, 0, rel)
+    return (gain * (a * 0.55 + noise) * env).astype(np.float32)
+
+chord = shofar_chord()
 place(chord, t_b + 0.8)
+# standalone clip for the page's completion moment
+import wave as _wave
+_w = WAV / "shofar.wav"
+with _wave.open(str(_w), "wb") as f:
+    f.setnchannels(1); f.setsampwidth(2); f.setframerate(SR)
+    f.writeframes((np.clip(chord, -1, 1) * 32767).astype(np.int16).tobytes())
+subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(_w),
+                "-codec:a", "libmp3lame", "-b:a", "96k",
+                str(OUT / "cues" / "shofar.mp3")], check=True)
 fade = int(2.5 * SR)
 track[-fade:] *= np.linspace(1, 0, fade)
 track = (track / max(1e-6, np.abs(track).max()) * 0.92).astype(np.float32)

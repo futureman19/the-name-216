@@ -190,7 +190,7 @@ function loadClips(){
     a.addEventListener('canplaythrough',()=>{a._ok=true; CLIPS.ready++; if(CLIPS.ready>=13)CLIPS.ok=true;},{once:true});
     a.addEventListener('error',()=>{a._bad=true;},{once:true}); return a; };
   for(let d=1;d<=9;d++) CLIPS['L'+d]=mk(`audio/letters/${d}.mp3`);
-  for(const c of ['inhale','rest','silence','complete']) CLIPS[c]=mk(`audio/cues/${c}.mp3`);
+  for(const c of ['inhale','rest','silence','complete','shofar']) CLIPS[c]=mk(`audio/cues/${c}.mp3`);
 }
 function playClip(key, rate){
   const src = CLIPS[key];
@@ -277,6 +277,7 @@ async function cycle(){
   $('phase').textContent='the Name has been breathed';
   $('count').textContent='216 letters \u00b7 72 triplets \u00b7 12 breaths \u00b7 4 silences';
   playClip('complete');
+  setTimeout(()=>{ if(CLIPS.ok) playClip('shofar'); }, D(1400));   // the horn closes the day
   tone(108, 3, .05); setTimeout(()=>tone(216,3,.04), 900);
 }
 /* station ticks: 5 per breath, during breath phases only — the silences suspend the clock */
