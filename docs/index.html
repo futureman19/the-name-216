@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>THE NAME — 216</title>
+<style>
+  :root { --gold:#d4af37; --gold-hi:#ffe9a8; --ink:#0b0a12; --panel:rgba(16,14,24,.82); }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { height:100%; overflow:hidden; background:var(--ink); }
+  body { font-family:Georgia,'Times New Roman',serif; color:#e8dfc8; }
+  #app { position:fixed; inset:0; }
+  canvas.webgl { display:block; }
+
+  .hud { position:fixed; z-index:10; pointer-events:none; }
+  .hud > * { pointer-events:auto; }
+
+  #title { top:22px; left:26px; }
+  #title h1 { font-size:26px; letter-spacing:.35em; color:var(--gold); font-weight:400; }
+  #title p { font-size:12.5px; letter-spacing:.12em; color:#9c8f6d; margin-top:6px; font-style:italic; }
+
+  #panel { top:96px; left:26px; width:330px; background:var(--panel); border:1px solid rgba(212,175,55,.28);
+           border-radius:10px; padding:16px 18px; backdrop-filter:blur(6px); }
+  #panel h2 { font-size:14px; letter-spacing:.22em; color:var(--gold); font-weight:400; margin-bottom:8px; }
+  #panel p { font-size:13.5px; line-height:1.55; color:#d9cfb2; }
+  #panel .stat { margin-top:10px; font-size:12.5px; color:#9c8f6d; letter-spacing:.06em; }
+  #panel .stat b { color:var(--gold-hi); font-weight:400; }
+
+  #controls { bottom:20px; left:50%; transform:translateX(-50%); display:flex; gap:18px; align-items:center; flex-wrap:wrap; justify-content:center; }
+  .group { display:flex; gap:6px; background:var(--panel); border:1px solid rgba(212,175,55,.25); border-radius:999px; padding:5px; }
+  .group .lbl { align-self:center; font-size:10px; letter-spacing:.2em; color:#8a7f60; padding:0 8px 0 12px; }
+  button { font-family:inherit; font-size:12px; letter-spacing:.1em; background:transparent; color:#cbbf9c;
+           border:1px solid transparent; border-radius:999px; padding:7px 14px; cursor:pointer; transition:all .18s; }
+  button:hover { color:var(--gold-hi); border-color:rgba(212,175,55,.4); }
+  button.active { background:rgba(212,175,55,.16); color:var(--gold-hi); border-color:var(--gold); }
+
+  #counter { top:24px; right:28px; text-align:right; display:none; }
+  #counter .big { font-size:44px; color:var(--gold-hi); letter-spacing:.05em; }
+  #counter .sub { font-size:12px; color:#9c8f6d; letter-spacing:.14em; margin-top:2px; }
+
+  #ring { left:26px; bottom:20px; width:150px; height:150px; display:none; }
+  #ringlbl { left:26px; bottom:172px; width:150px; text-align:center; font-size:10.5px; letter-spacing:.18em; color:#8a7f60; display:none; }
+
+  #tip { position:fixed; z-index:20; pointer-events:none; background:var(--panel); border:1px solid rgba(212,175,55,.4);
+         border-radius:8px; padding:8px 12px; font-size:12.5px; color:var(--gold-hi); display:none; white-space:nowrap; }
+  #tip small { color:#9c8f6d; }
+
+  #foot { bottom:20px; right:24px; font-size:10.5px; color:#6d6449; letter-spacing:.1em; }
+</style>
+<script type="importmap">
+{ "imports": {
+    "three": "https://unpkg.com/three@0.186.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.186.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app"></div>
+
+<div class="hud" id="title"><h1>THE NAME</h1><p>two hundred sixteen digits — touch it</p></div>
+<div class="hud" id="panel">
+  <h2 id="panelTitle">WHAT AM I LOOKING AT?</h2>
+  <p id="panelText">216 digits found repeating inside the Fibonacci sequence, arranged as 6 × 6 × 6 — because 216 <i>is</i> six cubed. Drag to orbit, scroll to zoom, hover any cell. Every button on the bottom bar is a property of the number, made visible. Every claim verifiable with a pencil.</p>
+  <div class="stat" id="panelStat">cells: <b>216</b> · zeros: <b>0</b> · digital root: <b>9</b></div>
+</div>
+<div class="hud" id="counter"><div class="big" id="counterBig"></div><div class="sub" id="counterSub"></div></div>
+<canvas class="hud" id="ring" width="300" height="300"></canvas>
+<div class="hud" id="ringlbl">SOURCE CLOCK — 60 STATIONS</div>
+<div class="hud" id="controls">
+  <div class="group"><span class="lbl">FORM</span>
+    <button data-form="cube" class="active">Cube</button>
+    <button data-form="grid">Grid</button>
+    <button data-form="sphere">Sphere</button>
+    <button data-form="spiral">Spiral</button>
+  </div>
+  <div class="group"><span class="lbl">PROOF</span>
+    <button data-demo="flow">Fibonacci Flow</button>
+    <button data-demo="columns">Columns of 60</button>
+    <button data-demo="fold">Fold in Half</button>
+    <button data-demo="census">Census</button>
+    <button data-demo="reset">Reset</button>
+  </div>
+</div>
+<div class="hud" id="foot">from <i>Lessons From The Future</i> — the proof chapter</div>
+<div id="tip"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+window.__errors = [];
+window.addEventListener('error', e => __errors.push(String(e.message || e)));
+
+/* ================= THE NUMBER (verified data) ================= */
+const ROWS = [
+"112358314594377741","493257291112358314","943777415617853819",
+"112358314594377741","617853819998752796","943777415617853819",
+"998752796516733369","617853819998752796","167333695493257291",
+"998752796516733369","493257291112358314","167333695493257291"];
+
+// Fibonacci units clock (60 stations, zeros at 15/30/45/60), zero-stripped = 56
+const fibU=[0,1,1]; for(let i=3;i<400;i++) fibU.push((fibU[i-1]+fibU[i-2])%10);
+const stripped=[]; for(let p=1;p<=60;p++) if(fibU[p]!==0) stripped.push(p);
+// window starts (1-based) of each 18-digit tile in the stripped clock — verified
+const TILE_START={A:56,B:47,C:10,D:19,E:28,F:38};
+const ROW_TILES=['A','B','C','A','D','C','E','D','F','E','B','F'];
+
+const cells=[];
+let idx=0;
+for(let r=0;r<12;r++){
+  const start=TILE_START[ROW_TILES[r]]-1;
+  for(let c=0;c<18;c++){
+    const clockPos = stripped[(start+c)%56];
+    cells.push({ i:idx, d:+ROWS[r][c], row:r, col:c,
+                 comp: idx<108 ? idx+108 : idx-108, clockPos });
+    idx++;
+  }
+}
+// in-page proof asserts (read by QA)
+window.__checks = {
+  n: cells.length===216,
+  colSums60: [...Array(18)].every((_,c)=>cells.filter(x=>x.col===c).reduce((s,x)=>s+x.d,0)===60),
+  pairs10: cells.every(x=>x.d + cells[x.comp].d === 10),
+  total1080: cells.reduce((s,x)=>s+x.d,0)===1080,
+  noZeros: cells.every(x=>x.d!==0)
+};
+
+/* ================= SCENE ================= */
+const app = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ antialias:true, preserveDrawingBuffer:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
+renderer.domElement.classList.add('webgl');
+app.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x07060d);
+scene.fog = new THREE.FogExp2(0x07060d, 0.016);
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, .1, 300);
+camera.position.set(10.5, 8, 15);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = .06;
+controls.minDistance = 6; controls.maxDistance = 60;
+controls.autoRotate = true; controls.autoRotateSpeed = .55;
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), .04).texture;
+
+scene.add(new THREE.AmbientLight(0x404060, .5));
+const key = new THREE.DirectionalLight(0xfff2cc, 1.1); key.position.set(6,10,7); scene.add(key);
+
+// starfield
+{
+  const g=new THREE.BufferGeometry(); const N=900; const pos=new Float32Array(N*3);
+  for(let i=0;i<N;i++){ const r=60+Math.random()*80, t=Math.random()*Math.PI*2, p=Math.acos(2*Math.random()-1);
+    pos[i*3]=r*Math.sin(p)*Math.cos(t); pos[i*3+1]=r*Math.cos(p); pos[i*3+2]=r*Math.sin(p)*Math.sin(t); }
+  g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({color:0x8a7f60,size:.14,transparent:true,opacity:.55})));
+}
+
+/* ============ digit textures (canvas, gold on dark) ============ */
+function digitTexture(d){
+  const cv=document.createElement('canvas'); cv.width=cv.height=256;
+  const x=cv.getContext('2d');
+  x.fillStyle='#12101c'; x.fillRect(0,0,256,256);
+  const grd=x.createLinearGradient(0,0,256,256);
+  grd.addColorStop(0,'#ffe9a8'); grd.addColorStop(.5,'#d4af37'); grd.addColorStop(1,'#8a6d1f');
+  x.fillStyle=grd; x.font='700 165px Georgia,serif';
+  x.textAlign='center'; x.textBaseline='middle';
+  x.shadowColor='rgba(212,175,55,.9)'; x.shadowBlur=18;
+  x.fillText(String(d),128,140);
+  const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; return t;
+}
+
+const group = new THREE.Group(); scene.add(group);
+const FREQ={1:32,2:16,3:32,4:16,5:24,6:16,7:32,8:16,9:32};
+const boxGeo = new THREE.BoxGeometry(.8,.8,.8);
+const meshes={}, cellMesh=new Array(216), cellInst=new Array(216);
+for(let d=1;d<=9;d++){
+  const tex=digitTexture(d);
+  const mat=new THREE.MeshStandardMaterial({
+    map:tex, emissiveMap:tex, emissive:new THREE.Color(0xd4af37), emissiveIntensity:.85,
+    color:0xffffff, roughness:.35, metalness:.55 });
+  const m=new THREE.InstancedMesh(boxGeo, mat, FREQ[d]);
+  m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  group.add(m); meshes[d]=m;
+}
+{ const fill={1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0};
+  for(const c of cells){ cellMesh[c.i]=meshes[c.d]; cellInst[c.i]=fill[c.d]++; } }
+
+// glow sprite pool for pulses/highlights
+function glowTexture(){
+  const cv=document.createElement('canvas'); cv.width=cv.height=128;
+  const x=cv.getContext('2d'); const g=x.createRadialGradient(64,64,0,64,64,64);
+  g.addColorStop(0,'rgba(255,233,168,1)'); g.addColorStop(.35,'rgba(212,175,55,.55)'); g.addColorStop(1,'rgba(212,175,55,0)');
+  x.fillStyle=g; x.fillRect(0,0,128,128);
+  const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; return t;
+}
+const glowTex=glowTexture(); const sprites=[];
+for(let i=0;i<40;i++){
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0}));
+  s.scale.setScalar(2.6); group.add(s); sprites.push({s,t:0});
+}
+let spriteCursor=0;
+function flash(pos,strength=1){
+  const it=sprites[spriteCursor++%sprites.length];
+  it.s.position.copy(pos); it.t=strength;
+}
+
+/* ================= FORMATIONS ================= */
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+function buildFormations(){
+  const F={cube:[],grid:[],sphere:[],spiral:[]};
+  for(const c of cells){
+    // CUBE: 6x6x6 — complement partner sits 3 layers directly above (verified mapping)
+    const z=Math.floor(c.i/36), rem=c.i%36, x=rem%6, y=Math.floor(rem/6);
+    F.cube.push(V((x-2.5)*1.06,(y-2.5)*1.06,(z-2.5)*1.06));
+    // GRID: manuscript 12x18 wall — partner is 6 rows below, same column
+    F.grid.push(V((c.col-8.5)*.78,(5.5-c.row)*.78,0));
+    // SPHERE: golden-angle distribution
+    const k=c.i+.5, phi=Math.acos(1-2*k/216), th=Math.PI*(1+Math.sqrt(5))*k, R=6.9;
+    F.sphere.push(V(R*Math.sin(phi)*Math.cos(th),R*Math.cos(phi),R*Math.sin(phi)*Math.sin(th)));
+    // SPIRAL: Vogel / golden spiral
+    const rr=.52*Math.sqrt(c.i+1), aa=(c.i)*2.39996323;
+    F.spiral.push(V(rr*Math.cos(aa),0,rr*Math.sin(aa)));
+  }
+  return F;
+}
+const FORMS=buildFormations();
+const cellPos=FORMS.cube.map(v=>v.clone());
+
+// morph state
+let morph={from:FORMS.cube.map(v=>v.clone()),to:FORMS.cube,t:1,active:false};
+let currentForm='cube';
+function goForm(name){
+  if(name===currentForm&&!demo.foldOn) return;
+  morph={from:cellPos.map(v=>v.clone()),to:FORMS[name],t:0,active:true};
+  currentForm=name;
+  document.querySelectorAll('[data-form]').forEach(b=>b.classList.toggle('active',b.dataset.form===name));
+}
+const ease=t=>t*t*(3-2*t);
+
+/* fold modifier (cube: split z-layers; grid: split row halves) */
+let foldAmount=0, foldTarget=0;
+function foldOffset(c,base){
+  if(currentForm==='cube') return V(0,0, base.z<0?-2.3:2.3);
+  if(currentForm==='grid') return V(0, c.row<6?1.9:-1.9, 0);
+  return V(0,0,0);
+}
+
+/* arcs between complement pairs (108) */
+const arcGeo=new THREE.BufferGeometry();
+arcGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(108*2*3),3));
+const arcs=new THREE.LineSegments(arcGeo,new THREE.LineBasicMaterial({color:0xd4af37,transparent:true,opacity:0}));
+group.add(arcs);
+function updateArcs(alpha){
+  const p=arcGeo.attributes.position.array; let k=0;
+  for(let i=0;i<108;i++){
+    const a=cellPos[i], b=cellPos[i+108];
+    p[k++]=a.x;p[k++]=a.y;p[k++]=a.z; p[k++]=b.x;p[k++]=b.y;p[k++]=b.z;
+  }
+  arcGeo.attributes.position.needsUpdate=true;
+  arcs.material.opacity=alpha*.55;
+}
+
+/* ================= POST ================= */
+const composer=new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene,camera));
+const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),.45,.3,.85);
+composer.addPass(bloom); composer.addPass(new OutputPass());
+
+/* ================= HUD refs ================= */
+const panelTitle=document.getElementById('panelTitle'),
+      panelText=document.getElementById('panelText'),
+      panelStat=document.getElementById('panelStat'),
+      counterEl=document.getElementById('counter'),
+      counterBig=document.getElementById('counterBig'),
+      counterSub=document.getElementById('counterSub'),
+      ring=document.getElementById('ring'), ringlbl=document.getElementById('ringlbl'),
+      tip=document.getElementById('tip');
+const rctx=ring.getContext('2d');
+const visited=new Set();
+function drawRing(activePos){
+  rctx.clearRect(0,0,300,300); const cx=150,cy=150,R=118;
+  for(let p=1;p<=60;p++){
+    const a=(p/60)*Math.PI*2-Math.PI/2, x=cx+R*Math.cos(a), y=cy+R*Math.sin(a);
+    const isZero=(p%15===0);
+    rctx.beginPath(); rctx.arc(x,y,isZero?5:3.4,0,7);
+    if(isZero){ rctx.strokeStyle='rgba(200,80,80,.75)'; rctx.lineWidth=1.4; rctx.stroke(); }
+    else if(p===activePos){ rctx.fillStyle='#fff'; rctx.fill(); }
+    else if(visited.has(p)){ rctx.fillStyle='#d4af37'; rctx.fill(); }
+    else { rctx.fillStyle='rgba(156,143,109,.3)'; rctx.fill(); }
+  }
+  rctx.fillStyle='#9c8f6d'; rctx.font='13px Georgia'; rctx.textAlign='center';
+  rctx.fillText('60',cx,cy-4); rctx.font='italic 10px Georgia'; rctx.fillText('zeros removed',cx,cy+14);
+}
+
+/* ================= DEMOS ================= */
+const demo={name:null,t0:0,foldOn:false,pairTimer:0};
+const pairColors={ '1,9':0xffe9a8,'2,8':0xffc36b,'3,7':0xe08e45,'4,6':0xb78fd6,'5,5':0xfff6dc };
+const clock=new THREE.Clock();
+let simTime=0;
+
+const PANELS={
+  flow:["FIBONACCI FLOW","Every digit is the units digit of a Fibonacci number, taken in order — 1, 1, 2, 3, 5, 8, 13→3, 21→1… Every fifteenth Fibonacci number ends in zero, and the zeros are removed: the code is the clock with its voids closed. Watch the source clock, lower left."],
+  columns:["COLUMNS OF 60","Each of the eighteen columns sums to exactly sixty — the clock inside the Name. Not approximately. Sixty. Eighteen times. It happens because the top half of the grid and the bottom half are perfect complements: every column is six pairs of ten."],
+  fold:["FOLD IN HALF","The 216 digits fold into 108 pairs — every digit joined to one partner, and every pair sums to ten. In the cube, the pairs are pillars straight through the heart. The Name is 108 couples of ten."],
+  census:["THE CENSUS","Nothing is lopsided. Count the digits: 1s equal 9s (32 each), 2s equal 8s (16), 3s equal 7s (32), 4s equal 6s (16), 5 stands alone (24), and 0 is absent. Sum 1080 — digital root 9. The mirror census is why the whole structure balances."],
+  reset:["WHAT AM I LOOKING AT?","216 digits found repeating inside the Fibonacci sequence, arranged as 6 × 6 × 6 — because 216 <i>is</i> six cubed. Drag to orbit, scroll to zoom, hover any cell."]
+};
+const FORM_PANELS={
+  cube:["THE CUBE","216 = 6 × 6 × 6 — the first perfect number, cubed. And 3³ + 4³ + 5³ = 27 + 64 + 125 = 216: the builder's triangle, cubed, sums to the Name."],
+  grid:["THE GRID","The manuscript form: twelve rows of eighteen, exactly as found. Row 1 is the Fibonacci units in order — read it: 1, 1, 2, 3, 5, 8… The width is 18 = 6+6+6; the count is 216 = 6×6×6. Both arithmetics in one rectangle."],
+  sphere:["THE SPHERE","The same 216 cells distributed by the golden angle — the packing rule of sunflowers and pinecones. The pattern as a world."],
+  spiral:["THE SPIRAL","A Vogel spiral — 216 cells at golden-angle intervals. The Fibonacci spiral made of its own digits."]
+};
+
+function setPanel(t,p,s){ panelTitle.innerHTML=t; panelText.innerHTML=p; if(s!==undefined)panelStat.innerHTML=s; }
+function startDemo(name){
+  stopDemo();
+  demo.name=name; demo.t0=simTime; demo.stamped=false;
+  document.querySelectorAll('[data-demo]').forEach(b=>b.classList.toggle('active',b.dataset.demo===name));
+  const P=PANELS[name]; if(P) setPanel(P[0],P[1]);
+  if(name==='flow'){ visited.clear(); ring.style.display='block'; ringlbl.style.display='block'; drawRing(null); }
+  if(name==='columns'){ goForm('grid'); counterEl.style.display='block'; counterBig.textContent='0'; counterSub.textContent='COLUMN 1 OF 18'; }
+  if(name==='fold'){ demo.foldOn=true; foldTarget=1; if(currentForm!=='cube'&&currentForm!=='grid') goForm('cube'); }
+  if(name==='census'){ applyCensus(); }
+  if(name==='reset'){ setPanel(...PANELS.reset, 'cells: <b>216</b> · zeros: <b>0</b> · digital root: <b>9</b>'); }
+}
+function stopDemo(){
+  document.querySelectorAll('[data-demo]').forEach(b=>b.classList.remove('active'));
+  demo.name=null; demo.foldOn=false; foldTarget=0;
+  counterEl.style.display='none'; ring.style.display='none'; ringlbl.style.display='none';
+  arcs.material.opacity=0; clearCensus();
+}
+
+/* census tinting */
+const tmpColor=new THREE.Color();
+function applyCensus(){
+  for(const c of cells){
+    const key2=c.d===5?'5,5':[Math.min(c.d,10-c.d),Math.max(c.d,10-c.d)].join(',');
+    tmpColor.setHex(pairColors[key2]);
+    cellMesh[c.i].setColorAt(cellInst[c.i],tmpColor);
+  }
+  for(let d=1;d<=9;d++){ meshes[d].instanceColor.needsUpdate=true; }
+  setPanel(PANELS.census[0],PANELS.census[1],
+    '1s=9s: <b>32</b> · 2s=8s: <b>16</b> · 3s=7s: <b>32</b> · 4s=6s: <b>16</b> · 5: <b>24</b> · 0: <b>absent</b>');
+}
+function clearCensus(){
+  for(const c of cells) cellMesh[c.i].setColorAt(cellInst[c.i],tmpColor.setHex(0xffffff));
+  for(let d=1;d<=9;d++) meshes[d].instanceColor.needsUpdate=true;
+}
+
+/* ================= interaction ================= */
+const ray=new THREE.Raycaster(); const mouse=new THREE.Vector2(); let hover=-1;
+addEventListener('pointermove',e=>{
+  mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);
+  tip.style.left=(e.clientX+16)+'px'; tip.style.top=(e.clientY+10)+'px';
+});
+addEventListener('pointerdown',()=>{controls.autoRotate=false;});
+
+/* ================= loop ================= */
+const tmpM=new THREE.Matrix4(), tmpS=new THREE.Vector3();
+const cellScale=new Float32Array(216).fill(1);
+function frame(dt,t){
+
+  // morph
+  if(morph.active){
+    morph.t=Math.min(1,morph.t+dt/1.7); let done=true;
+    for(let i=0;i<216;i++){
+      const local=Math.min(1,Math.max(0,morph.t*1.35-(i/216)*.35));
+      if(local<1) done=false;
+      cellPos[i].lerpVectors(morph.from[i],morph.to[i],ease(local));
+    }
+    if(done) morph.active=false;
+  }
+  // fold
+  foldAmount+=(foldTarget-foldAmount)*Math.min(1,dt*3.2);
+  // demos driving
+  if(demo.name==='flow'){
+    const step=Math.floor((t-demo.t0)*10);
+    if(step<216){
+      const c=cells[step]; flash(cellPos[c.i],1.4);
+      visited.add(c.clockPos); drawRing(c.clockPos);
+    } else if(step===216){ flash(new THREE.Vector3(0,0,0),2.5); }
+  }
+  if(demo.name==='columns'){
+    const per=1.05, cidx=Math.floor((t-demo.t0)/per);
+    if(cidx<18){
+      const frac=((t-demo.t0)%per)/per;
+      const colCells=cells.filter(x=>x.col===cidx);
+      const lit=Math.floor(frac*12);
+      for(let j=0;j<lit;j++) cellScale[colCells[j].i]=1.5;
+      counterBig.textContent=(60*cidx)+Math.round(60*Math.min(1,frac));
+      counterSub.textContent='COLUMN '+(cidx+1)+' OF 18 — Σ = 60';
+    } else {
+      counterBig.textContent='1080';
+      counterSub.textContent='18 × 60 — DIGITAL ROOT 9';
+      if(!demo.stamped){ demo.stamped=true; flash(new THREE.Vector3(0,0,0),3); }
+    }
+  }
+  if(demo.name==='fold') updateArcs(foldAmount);
+  if(hover>=0){ flash(cellPos[hover],.5); flash(cellPos[cells[hover].comp],.9); }
+
+  // apply transforms
+  for(const c of cells){
+    const p=cellPos[c.i];
+    let fx=0,fy=0,fz=0;
+    if(foldAmount>.001){ const o=foldOffset(c,FORMS[currentForm][c.i]); fx=o.x*foldAmount; fy=o.y*foldAmount; fz=o.z*foldAmount; }
+    cellScale[c.i]+=(1-cellScale[c.i])*Math.min(1,dt*6);
+    const s=cellScale[c.i]*(hover===c.i?1.35:1);
+    tmpM.makeScale(s,s,s); tmpM.setPosition(p.x+fx,p.y+fy,p.z+fz);
+    cellMesh[c.i].setMatrixAt(cellInst[c.i],tmpM);
+    if(demo.name==='columns'&&currentForm==='grid'){
+      // keep column highlight persistent during its beat
+    }
+  }
+  for(let d=1;d<=9;d++) meshes[d].instanceMatrix.needsUpdate=true;
+
+  // sprites decay
+  for(const it of sprites){
+    if(it.t>0){ it.t=Math.max(0,it.t-dt*2.2); it.s.material.opacity=it.t; it.s.scale.setScalar(2.2+(1-it.t)*1.6); }
+  }
+
+  // raycast hover (throttled by frame)
+  ray.setFromCamera(mouse,camera);
+  const hits=ray.intersectObjects(Object.values(meshes));
+  if(hits.length){
+    const h=hits[0];
+    hover=cells.find(c=>cellMesh[c.i]===h.object&&cellInst[c.i]===h.instanceId)?.i ?? -1;
+    if(hover>=0){
+      const c=cells[hover], pc=cells[c.comp];
+      tip.style.display='block';
+      tip.innerHTML=`digit <b>${c.d}</b> · cell #${c.i+1} <small>· row ${c.row+1}, col ${c.col+1}</small><br><small>pairs with #${pc.i+1} → ${c.d} + ${pc.d} = 10 · from clock station ${c.clockPos}</small>`;
+    }
+  } else { hover=-1; tip.style.display='none'; }
+
+  controls.update();
+  composer.render();
+}
+function tick(){
+  requestAnimationFrame(tick);
+  const dt=Math.min(clock.getDelta(),.1); simTime+=dt;
+  frame(dt,simTime);
+}
+
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight); composer.setSize(innerWidth,innerHeight);
+});
+
+document.querySelectorAll('[data-form]').forEach(b=>b.addEventListener('click',()=>{
+  stopDemo(); goForm(b.dataset.form);
+  const F=FORM_PANELS[b.dataset.form]; setPanel(F[0],F[1]);
+}));
+document.querySelectorAll('[data-demo]').forEach(b=>b.addEventListener('click',()=>startDemo(b.dataset.demo)));
+
+window.__NAME216={ready:true,cells,scene,renderer,camera,
+  pump:(n,dtEach=1/30)=>{for(let k=0;k<n;k++){simTime+=dtEach;frame(dtEach,simTime);}}};
+tick();
+</script>
+</body>
+</html>
