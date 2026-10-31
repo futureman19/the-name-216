@@ -72,6 +72,7 @@
     <button data-form="grid">Grid</button>
     <button data-form="sphere">Sphere</button>
     <button data-form="spiral">Spiral</button>
+    <button data-form="metatron">Metatron</button>
   </div>
   <div class="group"><span class="lbl">PROOF</span>
     <button data-demo="flow">Fibonacci Flow</button>
@@ -81,7 +82,7 @@
     <button data-demo="reset">Reset</button>
   </div>
 </div>
-<div class="hud" id="foot">from <i>Lessons From The Future</i> — the proof chapter</div>
+<div class="hud" id="foot">from <i>Lessons From The Future</i> — the proof chapter · Metatron lattice after Lucien Khan · <a href="/the-name-216/metatron.html" style="color:#9c8f6d">the full assembly →</a></div>
 <div id="tip"></div>
 
 <script type="module">
@@ -219,8 +220,10 @@ function flash(pos,strength=1){
 
 /* ================= FORMATIONS ================= */
 const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+// Metatron lattice geometry (Khan's 13-clock construction)
+const IN_R=3.4, OUT_R=6.8, RING_R=1.35, MASTER_R=1.9;
 function buildFormations(){
-  const F={cube:[],grid:[],sphere:[],spiral:[]};
+  const F={cube:[],grid:[],sphere:[],spiral:[],metatron:[]};
   for(const c of cells){
     // CUBE: 6x6x6 — complement partner sits 3 layers directly above (verified mapping)
     const z=Math.floor(c.i/36), rem=c.i%36, x=rem%6, y=Math.floor(rem/6);
@@ -233,19 +236,50 @@ function buildFormations(){
     // SPIRAL: Vogel / golden spiral
     const rr=.52*Math.sqrt(c.i+1), aa=(c.i)*2.39996323;
     F.spiral.push(V(rr*Math.cos(aa),0,rr*Math.sin(aa)));
+    // METATRON: 12 directional clocks (one per grid row) of 18 digits each — outer rings on the same spokes as inner (complement pairs radial)
+    const ring=c.row<6?0:1, k=c.row<6?c.row:c.row-6;
+    const ma=(k/6)*Math.PI*2;
+    const mcx=Math.cos(ma)*(ring?OUT_R:IN_R), mcz=Math.sin(ma)*(ring?OUT_R:IN_R);
+    const mb=(c.col/18)*Math.PI*2-Math.PI/2;
+    F.metatron.push(V(mcx+RING_R*Math.cos(mb),0,mcz+RING_R*Math.sin(mb)));
   }
   return F;
 }
 const FORMS=buildFormations();
+
+/* ===== Metatron decor: 13 circles + connective web + master 60-clock ===== */
+const metatronDecor=new THREE.Group(); metatronDecor.visible=false; group.add(metatronDecor);
+{
+  const centers=[V(0,0,0)];
+  for(let k=0;k<6;k++){const a=(k/6)*Math.PI*2;centers.push(V(Math.cos(a)*IN_R,0,Math.sin(a)*IN_R));}
+  for(let k=0;k<6;k++){const a=(k/6)*Math.PI*2;centers.push(V(Math.cos(a)*OUT_R,0,Math.sin(a)*OUT_R));}
+  const mkCircle=(c,r,col,op)=>{const pts=[];for(let i=0;i<=72;i++){const t=(i/72)*Math.PI*2;pts.push(new THREE.Vector3(c.x+r*Math.cos(t),0,c.z+r*Math.sin(t)));}
+    metatronDecor.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:col,transparent:true,opacity:op})));};
+  for(const c of centers) mkCircle(c,RING_R,0xd4af37,.22);
+  const web=[];for(let i=0;i<13;i++)for(let j=i+1;j<13;j++){web.push(centers[i],centers[j]);}
+  metatronDecor.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(web),new THREE.LineBasicMaterial({color:0xd4af37,transparent:true,opacity:.08})));
+  mkCircle(centers[0],MASTER_R,0xd4af37,.45);
+  const ticks=[],voids=[];
+  for(let p=1;p<=60;p++){const a=(p/60)*Math.PI*2-Math.PI/2,cx=Math.cos(a),sz=Math.sin(a);
+    (p%15===0?voids:ticks).push(new THREE.Vector3(cx*(MASTER_R-.16),0,sz*(MASTER_R-.16)),new THREE.Vector3(cx*(MASTER_R+.16),0,sz*(MASTER_R+.16)));}
+  metatronDecor.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(ticks),new THREE.LineBasicMaterial({color:0xd4af37,transparent:true,opacity:.55})));
+  metatronDecor.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(voids),new THREE.LineBasicMaterial({color:0xc05050,transparent:true,opacity:.85})));
+}
 const cellPos=FORMS.cube.map(v=>v.clone());
 
 // morph state
 let morph={from:FORMS.cube.map(v=>v.clone()),to:FORMS.cube,t:1,active:false};
 let currentForm='cube';
-function goForm(name){
-  if(name===currentForm&&!demo.foldOn) return;
-  morph={from:cellPos.map(v=>v.clone()),to:FORMS[name],t:0,active:true};
+function goForm(name,assemble=false){
+  if(name===currentForm&&!assemble&&!demo.foldOn) return;
+  let from=cellPos.map(v=>v.clone());
+  if(name==='metatron'&&assemble){
+    // the Name assembles: every cell starts at its own station on the master clock
+    from=cells.map(c=>{const a=(c.clockPos/60)*Math.PI*2-Math.PI/2;return V(Math.cos(a)*MASTER_R,0,Math.sin(a)*MASTER_R);});
+  }
+  morph={from,to:FORMS[name],t:0,active:true};
   currentForm=name;
+  metatronDecor.visible=(name==='metatron');
   document.querySelectorAll('[data-form]').forEach(b=>b.classList.toggle('active',b.dataset.form===name));
 }
 const ease=t=>t*t*(3-2*t);
@@ -322,7 +356,8 @@ const FORM_PANELS={
   cube:["THE CUBE","216 = 6 × 6 × 6 — the first perfect number, cubed. And 3³ + 4³ + 5³ = 27 + 64 + 125 = 216: the builder's triangle, cubed, sums to the Name."],
   grid:["THE GRID","The manuscript form: twelve rows of eighteen, exactly as found. Row 1 is the Fibonacci units in order — read it: 1, 1, 2, 3, 5, 8… The width is 18 = 6+6+6; the count is 216 = 6×6×6. Both arithmetics in one rectangle."],
   sphere:["THE SPHERE","The same 216 cells distributed by the golden angle — the packing rule of sunflowers and pinecones. The pattern as a world."],
-  spiral:["THE SPIRAL","A Vogel spiral — 216 cells at golden-angle intervals. The Fibonacci spiral made of its own digits."]
+  spiral:["THE SPIRAL","A Vogel spiral — 216 cells at golden-angle intervals. The Fibonacci spiral made of its own digits."],
+  metatron:["METATRON'S CUBE","Lucien Khan's lattice: thirteen Fibonacci clocks — one master at the center, twelve directional around it — coupled into the figure the temple builders called Metatron's cube. Watch the Name assemble: each directional clock contributes eighteen digits, and twelve times eighteen is 216. The master clock carries all sixty stations; the four red marks are the removed zeros."]
 };
 
 function setPanel(t,p,s){ panelTitle.innerHTML=t; panelText.innerHTML=p; if(s!==undefined)panelStat.innerHTML=s; }
@@ -460,7 +495,7 @@ addEventListener('resize',()=>{
 });
 
 document.querySelectorAll('[data-form]').forEach(b=>b.addEventListener('click',()=>{
-  stopDemo(); goForm(b.dataset.form);
+  stopDemo(); goForm(b.dataset.form, b.dataset.form==='metatron');
   const F=FORM_PANELS[b.dataset.form]; setPanel(F[0],F[1]);
 }));
 document.querySelectorAll('[data-demo]').forEach(b=>b.addEventListener('click',()=>startDemo(b.dataset.demo)));

@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>THE NAME IN METATRON'S CUBE</title>
+<style>
+  :root { --gold:#d4af37; --gold-hi:#ffe9a8; --ink:#0b0a12; --panel:rgba(16,14,24,.82); }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { height:100%; overflow:hidden; background:var(--ink); }
+  body { font-family:Georgia,'Times New Roman',serif; color:#e8dfc8; }
+  #app { position:fixed; inset:0; }
+  canvas.webgl { display:block; }
+  .hud { position:fixed; z-index:10; pointer-events:none; }
+  .hud > * { pointer-events:auto; }
+  #title { top:22px; left:26px; }
+  #title h1 { font-size:22px; letter-spacing:.3em; color:var(--gold); font-weight:400; }
+  #title p { font-size:12px; letter-spacing:.12em; color:#9c8f6d; margin-top:6px; font-style:italic; }
+  #panel { top:92px; left:26px; width:330px; background:var(--panel); border:1px solid rgba(212,175,55,.28);
+           border-radius:10px; padding:16px 18px; backdrop-filter:blur(6px); }
+  #panel h2 { font-size:13px; letter-spacing:.22em; color:var(--gold); font-weight:400; margin-bottom:8px; }
+  #panel p { font-size:13px; line-height:1.55; color:#d9cfb2; }
+  #counter { top:24px; right:28px; text-align:right; }
+  #counter .big { font-size:40px; color:var(--gold-hi); letter-spacing:.05em; }
+  #counter .sub { font-size:11.5px; color:#9c8f6d; letter-spacing:.14em; margin-top:2px; }
+  #controls { bottom:20px; left:50%; transform:translateX(-50%); display:flex; gap:10px; }
+  .group { display:flex; gap:6px; background:var(--panel); border:1px solid rgba(212,175,55,.25); border-radius:999px; padding:5px; }
+  button { font-family:inherit; font-size:12px; letter-spacing:.1em; background:transparent; color:#cbbf9c;
+           border:1px solid transparent; border-radius:999px; padding:7px 14px; cursor:pointer; transition:all .18s; }
+  button:hover { color:var(--gold-hi); border-color:rgba(212,175,55,.4); }
+  button.active { background:rgba(212,175,55,.16); color:var(--gold-hi); border-color:var(--gold); }
+  #tip { position:fixed; z-index:20; pointer-events:none; background:var(--panel); border:1px solid rgba(212,175,55,.4);
+         border-radius:8px; padding:8px 12px; font-size:12.5px; color:var(--gold-hi); display:none; white-space:nowrap; }
+  #tip small { color:#9c8f6d; }
+  #foot { bottom:20px; right:24px; font-size:10.5px; color:#6d6449; letter-spacing:.1em; max-width:300px; text-align:right; }
+</style>
+<script type="importmap">
+{ "imports": {
+    "three": "https://unpkg.com/three@0.186.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.186.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app"></div>
+<div class="hud" id="title"><h1>THE NAME IN METATRON'S CUBE</h1><p>thirteen clocks — one master, twelve directional</p></div>
+<div class="hud" id="panel">
+  <h2>LUCHEN KHAN'S LATTICE</h2>
+  <p id="panelText">Thirteen Fibonacci clocks coupled into the figure the temple builders called Metatron's cube. One master clock at the heart; twelve directional clocks around it, each reading eighteen stations from the master. The four zeros are removed — and twelve times eighteen assembles the Name.</p>
+  <p style="margin-top:8px;font-size:12px;color:#9c8f6d">Construction after Lucien Khan, <i>Fibonacci Universe</i>.</p>
+</div>
+<div class="hud" id="counter"><div class="big" id="counterBig"></div><div class="sub" id="counterSub"></div></div>
+<div class="hud" id="controls">
+  <div class="group"><button id="replay">⟳ Replay Assembly</button><button id="back">THE NAME — 216</button></div>
+</div>
+<div class="hud" id="foot">from <i>Lessons From The Future</i> — the proof chapter</div>
+<div id="tip"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+window.__errors=[]; window.addEventListener('error',e=>__errors.push(String(e.message||e)));
+
+/* ===== data (verified) ===== */
+const ROWS=[
+"112358314594377741","493257291112358314","943777415617853819",
+"112358314594377741","617853819998752796","943777415617853819",
+"998752796516733369","617853819998752796","167333695493257291",
+"998752796516733369","493257291112358314","167333695493257291"];
+const fibU=[0,1,1]; for(let i=3;i<400;i++) fibU.push((fibU[i-1]+fibU[i-2])%10);
+const stripped=[]; for(let p=1;p<=60;p++) if(fibU[p]!==0) stripped.push(p);
+const TILE_START={A:56,B:47,C:10,D:19,E:28,F:38};
+const ROW_TILES=['A','B','C','A','D','C','E','D','F','E','B','F'];
+const cells=[]; let idx=0;
+for(let r=0;r<12;r++){ const start=TILE_START[ROW_TILES[r]]-1;
+  for(let c=0;c<18;c++){ cells.push({i:idx,d:+ROWS[r][c],row:r,col:c,
+    comp:idx<108?idx+108:idx-108, clockPos:stripped[(start+c)%56]}); idx++; } }
+window.__checks={n:cells.length===216,
+  colSums60:[...Array(18)].every((_,c)=>cells.filter(x=>x.col===c).reduce((s,x)=>s+x.d,0)===60),
+  pairs10:cells.every(x=>x.d+cells[x.comp].d===10)};
+
+/* ===== scene ===== */
+const app=document.getElementById('app');
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.08;
+renderer.domElement.classList.add('webgl'); app.appendChild(renderer.domElement);
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x07060d);
+scene.fog=new THREE.FogExp2(0x07060d,0.013);
+const camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,.1,300);
+camera.position.set(0,15,16);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true; controls.dampingFactor=.06;
+controls.minDistance=5; controls.maxDistance=50;
+controls.autoRotate=true; controls.autoRotateSpeed=.4;
+const pmrem=new THREE.PMREMGenerator(renderer);
+scene.environment=pmrem.fromScene(new RoomEnvironment(),.04).texture;
+scene.add(new THREE.AmbientLight(0x404060,.5));
+const key=new THREE.DirectionalLight(0xfff2cc,1.1); key.position.set(6,10,7); scene.add(key);
+{ const g=new THREE.BufferGeometry(); const N=900; const pos=new Float32Array(N*3);
+  for(let i=0;i<N;i++){ const r=60+Math.random()*80,t=Math.random()*Math.PI*2,p=Math.acos(2*Math.random()-1);
+    pos[i*3]=r*Math.sin(p)*Math.cos(t); pos[i*3+1]=r*Math.cos(p); pos[i*3+2]=r*Math.sin(p)*Math.sin(t); }
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0x8a7f60,size:.14,transparent:true,opacity:.55}))); }
+
+/* ===== digit textures 0-9 ===== */
+function digitTexture(d,red){
+  const cv=document.createElement('canvas'); cv.width=cv.height=256;
+  const x=cv.getContext('2d');
+  x.fillStyle='#12101c'; x.fillRect(0,0,256,256);
+  const grd=x.createLinearGradient(0,0,256,256);
+  if(red){ grd.addColorStop(0,'#ff9a9a'); grd.addColorStop(1,'#a03030'); }
+  else { grd.addColorStop(0,'#ffe9a8'); grd.addColorStop(.5,'#d4af37'); grd.addColorStop(1,'#8a6d1f'); }
+  x.fillStyle=grd; x.font='700 165px Georgia,serif'; x.textAlign='center'; x.textBaseline='middle';
+  x.shadowColor=red?'rgba(220,80,80,.9)':'rgba(212,175,55,.9)'; x.shadowBlur=18;
+  x.fillText(String(d),128,140);
+  const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; return t;
+}
+const group=new THREE.Group(); scene.add(group);
+
+/* ===== lattice geometry — classical 13-circle Metatron (outer rings on the same 6 spokes) ===== */
+const IN_R=3.6, OUT_R=7.2, RING_R=1.5, MASTER_R=2.1;
+const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+const centers=[V(0,0,0)];
+for(let k=0;k<6;k++){const a=(k/6)*Math.PI*2-Math.PI/2;centers.push(V(Math.cos(a)*IN_R,0,Math.sin(a)*IN_R));}
+for(let k=0;k<6;k++){const a=(k/6)*Math.PI*2-Math.PI/2;centers.push(V(Math.cos(a)*OUT_R,0,Math.sin(a)*OUT_R));}
+// ring slot for cell: rows 0-5 inner spokes 1-6, rows 6-11 outer spokes 7-12 — same spoke => complement pairs radial
+function ringSlot(c){
+  const ring=c.row<6?0:1, k=c.row<6?c.row:c.row-6, ctr=centers[1+ring*6+k];
+  const b=(c.col/18)*Math.PI*2-Math.PI/2;
+  return V(ctr.x+RING_R*Math.cos(b),0,ctr.z+RING_R*Math.sin(b));
+}
+function masterStation(clockPos,y=0){
+  const a=(clockPos/60)*Math.PI*2-Math.PI/2;
+  return V(Math.cos(a)*MASTER_R,y,Math.sin(a)*MASTER_R);
+}
+
+/* decor: circles + web + master ring (opacity animated) */
+const decor=new THREE.Group(); group.add(decor);
+const decorMats=[];
+function mkLine(pts,col,op,loop=false){
+  const m=new THREE.LineBasicMaterial({color:col,transparent:true,opacity:0});
+  m.userData={target:op};
+  const g=new THREE.BufferGeometry().setFromPoints(pts);
+  const l=loop?new THREE.LineLoop(g,m):new THREE.Line(g,m);
+  decorMats.push(m); decor.add(l); return l;
+}
+for(const c of centers){ const pts=[]; for(let i=0;i<72;i++){const t=(i/72)*Math.PI*2;pts.push(V(c.x+RING_R*Math.cos(t),0,c.z+RING_R*Math.sin(t)));} mkLine(pts,0xd4af37,.24,true); }
+{ const web=[]; for(let i=0;i<13;i++)for(let j=i+1;j<13;j++){web.push(centers[i],centers[j]);}
+  const m=new THREE.LineBasicMaterial({color:0xd4af37,transparent:true,opacity:0});
+  m.userData={target:.09};
+  const l=new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(web),m);
+  decorMats.push(m); decor.add(l); }
+{ const pts=[]; for(let i=0;i<72;i++){const t=(i/72)*Math.PI*2;pts.push(V(Math.cos(t)*MASTER_R,0,Math.sin(t)*MASTER_R));}
+  mkLine(pts,0xd4af37,.5,true); }
+
+/* master clock digits (60 sprites; zeros red) */
+const masterSprites=[];
+for(let p=1;p<=60;p++){
+  const d=fibU[p], zero=(d===0);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:digitTexture(d,zero),transparent:true,opacity:0,depthWrite:false}));
+  sp.position.copy(masterStation(p)); sp.scale.setScalar(.0001);
+  sp.userData={pos:p,zero}; group.add(sp); masterSprites.push(sp);
+}
+
+/* ===== the 216 cells (9 instanced meshes) ===== */
+const FREQ={1:32,2:16,3:32,4:16,5:24,6:16,7:32,8:16,9:32};
+const boxGeo=new THREE.BoxGeometry(.62,.62,.62);
+const meshes={}, cellMesh=new Array(216), cellInst=new Array(216);
+for(let d=1;d<=9;d++){
+  const tex=digitTexture(d,false);
+  const m=new THREE.InstancedMesh(boxGeo,new THREE.MeshStandardMaterial({
+    map:tex,emissiveMap:tex,emissive:new THREE.Color(0xd4af37),emissiveIntensity:.85,
+    roughness:.35,metalness:.55}),FREQ[d]);
+  m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); group.add(m); meshes[d]=m;
+}
+{ const fill={1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0};
+  for(const c of cells){ cellMesh[c.i]=meshes[c.d]; cellInst[c.i]=fill[c.d]++; } }
+
+/* glow sprites */
+function glowTexture(){ const cv=document.createElement('canvas'); cv.width=cv.height=128;
+  const x=cv.getContext('2d'); const g=x.createRadialGradient(64,64,0,64,64,64);
+  g.addColorStop(0,'rgba(255,233,168,1)'); g.addColorStop(.35,'rgba(212,175,55,.55)'); g.addColorStop(1,'rgba(212,175,55,0)');
+  x.fillStyle=g; x.fillRect(0,0,128,128); const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; return t; }
+const glowTex=glowTexture(); const sprites=[];
+for(let i=0;i<40;i++){ const s=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0}));
+  s.scale.setScalar(2); group.add(s); sprites.push({s,t:0}); }
+let spriteCursor=0;
+function flash(pos,strength=1){ const it=sprites[spriteCursor++%sprites.length]; it.s.position.copy(pos); it.t=strength; }
+
+/* ===== post ===== */
+const composer=new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene,camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),.45,.3,.85));
+composer.addPass(new OutputPass());
+
+/* ===== HUD ===== */
+const counterBig=document.getElementById('counterBig'), counterSub=document.getElementById('counterSub'), tip=document.getElementById('tip');
+document.getElementById('back').addEventListener('click',()=>{ location.href='/the-name-216/'; });
+document.getElementById('replay').addEventListener('click',()=>{ startAssembly(); });
+
+/* ===== assembly choreography (deterministic on simTime) ===== */
+const T={circles:1.4, master:2.6, voids:1.6, assemble:7.2};
+let simTime=0, t0=0;
+function startAssembly(){ t0=simTime; for(const c of cells) c.launched=false; }
+const ease=t=>t*t*(3-2*t);
+function cellTiming(c){ return {start:t0+T.circles+T.master+T.voids + c.row*.42 + c.col*.028, dur:.85}; }
+
+const ray=new THREE.Raycaster(); const mouse=new THREE.Vector2(); let hover=-1;
+addEventListener('pointermove',e=>{ mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);
+  tip.style.left=(e.clientX+16)+'px'; tip.style.top=(e.clientY+10)+'px'; });
+addEventListener('pointerdown',()=>{controls.autoRotate=false;});
+
+const clock=new THREE.Clock();
+const tmpM=new THREE.Matrix4(), tmpS=new THREE.Vector3();
+function frame(dt,t){
+  const local=t-t0;
+  // decor ramp
+  const dOp=ease(Math.min(1,Math.max(0,local/T.circles)));
+  for(const m of decorMats) m.opacity=(m.userData.target??0)*dOp;
+  // master digits
+  for(const sp of masterSprites){
+    const p=sp.userData.pos;
+    const appear=ease(Math.min(1,Math.max(0,(local-T.circles-(p-1)*(T.master/60))/.3)));
+    let op=appear*.95, sc=appear*.5;
+    if(sp.userData.zero){
+      const vf=Math.min(1,Math.max(0,(local-T.circles-T.master)/T.voids));
+      if(vf>0){ const flashPhase=Math.sin(vf*Math.PI*4)>0?.9:.25; op=appear*(vf<1?flashPhase:.06); }
+    }
+    sp.material.opacity=op; sp.scale.setScalar(Math.max(.0001,sc));
+  }
+  // cells
+  let placed=0;
+  for(const c of cells){
+    const tm=cellTiming(c), p=Math.min(1,Math.max(0,(t-tm.start)/tm.dur));
+    const from=masterStation(c.clockPos,0), to=ringSlot(c);
+    const pos=new THREE.Vector3().lerpVectors(from,to,ease(p));
+    pos.y=Math.sin(p*Math.PI)*1.6;
+    if(p>=1) placed++;
+    if(p>=1&&!c.launched){ c.launched=true; flash(to,.9); }
+    const s=p<=0?.0001:.62;
+    tmpM.makeScale(s,s,s); tmpM.setPosition(pos.x,pos.y,pos.z);
+    cellMesh[c.i].setMatrixAt(cellInst[c.i],tmpM);
+  }
+  for(let d=1;d<=9;d++) meshes[d].instanceMatrix.needsUpdate=true;
+  counterBig.textContent=placed>=216?'216':String(placed);
+  counterSub.textContent=placed>=216?'THE NAME, ASSEMBLED':'PLACING / 216';
+  if(placed>=216&&!frame.stamped){ frame.stamped=true; flash(V(0,1,0),3); }
+  if(placed<216) frame.stamped=false;
+  // hover
+  ray.setFromCamera(mouse,camera);
+  const hits=ray.intersectObjects(Object.values(meshes));
+  if(hits.length){
+    const h=hits[0];
+    hover=cells.find(c=>cellMesh[c.i]===h.object&&cellInst[c.i]===h.instanceId)?.i ?? -1;
+    if(hover>=0){
+      const c=cells[hover], pc=cells[c.comp];
+      const spoke=(c.row<6?c.row:c.row-6)+1, ringName=c.row<6?'inner':'outer';
+      tip.style.display='block';
+      tip.innerHTML=`digit <b>${c.d}</b> · directional clock ${spoke} (${ringName}) · station ${c.col+1} of 18<br><small>reads the master from station ${c.clockPos} · pair: ${pc.d} on the same spoke (${c.d}+${pc.d}=10)</small>`;
+      flash(ringSlot(c),.4); flash(ringSlot(pc),.8);
+    }
+  } else { hover=-1; tip.style.display='none'; }
+  for(const it of sprites){ if(it.t>0){ it.t=Math.max(0,it.t-dt*2.2); it.s.material.opacity=it.t; it.s.scale.setScalar(1.8+(1-it.t)*1.4); } }
+  controls.update(); composer.render();
+}
+function tick(){ requestAnimationFrame(tick); const dt=Math.min(clock.getDelta(),.1); simTime+=dt; frame(dt,simTime); }
+addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight); composer.setSize(innerWidth,innerHeight); });
+
+window.__NAME216={ready:true,cells,scene,renderer,camera,
+  pump:(n,dtEach=1/30)=>{for(let k=0;k<n;k++){simTime+=dtEach;frame(dtEach,simTime);}}};
+startAssembly(); tick();
+</script>
+</body>
+</html>
