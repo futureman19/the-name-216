@@ -18,7 +18,7 @@
 </head>
 <body>
 <div id="wrap">
-  <canvas id="c" width="2160" height="3280"></canvas>
+  <canvas id="c" width="2160" height="4500"></canvas>
   <div class="cap">The Name is not written in the piano's compromise. Equal temperament bends every
   note to fit the keys; the Name is sung in the overtone series itself — digit <i>d</i> is the
   <i>d</i>-th harmonic of 108&nbsp;Hz, no translation. The first staff is the approximation
@@ -68,18 +68,13 @@ function notehead(x,y,acc){
 }
 T('THE NAME, IN NOTATION', W/2-340, 74, GOLD, ['s',56]);
 T('the scale of the Name, approximated for piano — digit · letter · Hz · piano key · how far the key is wrong', PX, 168, DIM, ['s',30,'italic']);
-staff(GY);                                                  // treble
-staff(GY+7*LS);                                             // bass
+staff(GY);                                                  // treble  (E4 bottom .. F5 top)
+staff(GY+6*LS);                                             // bass    (A3 top line .. G2 bottom)
 T('treble', PX-92, GY+2*LS+8, DIM, ['s',28,'italic']);
-T('bass', PX-76, GY+9*LS+8, DIM, ['s',28,'italic']);
+T('bass', PX-76, GY+8*LS+8, DIM, ['s',28,'italic']);
 scale.forEach((n,i)=>{
   const x=PX+150+i*196, m=n.midi, y=yOf(m);
-  // ledger lines where needed
-  const aboveTreble = m>77, belowTreble = m<64, inBass = m<=57, belowBass = m<43;
-  if(aboveTreble){ for(let mm=79; mm<=m; mm+=2) if(DIAT[mm%12]!==undefined && [0,2,4,5,7,9,11].includes(mm%12) && (mm-77)%2===1===false){} }
-  for(let mm=77+2; mm<=m; mm+=2) ledger(mm,x);              // above treble (every other = line)
-  for(let mm=64-2; mm>=Math.max(m,58); mm-=2) if(m<64) ledger(mm,x); // between/below handled below
-  for(let mm=41; mm>=m; mm-=2) if(m<43) ledger(mm,x);       // below bass
+  for(let mm=81; mm<=m; mm+=2) ledger(mm,x);                // ledger lines above treble (A5, C6…)
   notehead(x,y, n.name.includes('#')?'#':'');
   T(String(n.d), x-13, y+120, '#fff3cf', ['s',46]);
   T(LET[n.d-1], x-10, y+176, GOLD, ['s',40]);
@@ -87,13 +82,12 @@ scale.forEach((n,i)=>{
   T(n.name, x-34, y+272, GOLD, ['s',32]);
   T((n.cents>0?'+':'')+n.cents+'\u00a2', x-40, y+312, n.cents>10?'#e0a040':DIM, ['s',28,'italic']);
 });
-T('harmonic 7 — between F\u266F and G: no key on any piano', PX+2*196+60, GY+11.4*LS+36, '#e0a040', ['s',30,'italic']);
+T('harmonic 7 — between F\u266F and G: no key on any piano', 1300, 620, '#e0a040', ['s',30,'italic']);
 
 /* ---------- PANEL 2: the true score — 12 breaths ---------- */
-let Y=760;
+let Y=840;
 T('the true score — twelve breaths, unmetered, as chant', PX, Y-46, DIM, ['s',30,'italic']);
 const LANE=26, ROWH=9*LANE+34, NX0=PX+170, NX1=W-PX-20;
-scale.forEach((n,i)=>{ const y=Y+i*LANE; });                // layout only
 for(let b=0;b<12;b++){
   const y0=Y+b*ROWH;
   // 9 harmonic lanes
