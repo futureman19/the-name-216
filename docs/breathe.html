@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>The Name, Breathed — 216</title>
+<style>
+  :root{ --gold:#d4af37; --dim:#8a7a45; --bg:#050505; }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%; background:var(--bg); color:var(--gold);
+    font-family:'Cormorant Garamond',Georgia,serif; overflow:hidden;
+    -webkit-user-select:none; user-select:none;}
+  #c{position:fixed; inset:0; display:block}
+  #ui{position:fixed; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:space-between; pointer-events:none; padding:18px 12px}
+  header{text-align:center}
+  h1{font-size:clamp(20px,3.4vw,30px); font-weight:500; letter-spacing:.28em; text-transform:uppercase}
+  .sub{font-size:clamp(11px,1.6vw,14px); letter-spacing:.18em; color:var(--dim); margin-top:6px; text-transform:uppercase}
+  #trip{text-align:center; min-height:150px; display:flex; flex-direction:column; justify-content:center; gap:6px}
+  #heb{font-size:clamp(44px,9vw,84px); line-height:1; letter-spacing:.1em; text-shadow:0 0 24px rgba(212,175,55,.35)}
+  #dig{font-family:'Courier New',monospace; font-size:clamp(15px,2.4vw,22px); color:var(--dim); letter-spacing:.5em}
+  #nam{font-size:clamp(13px,2vw,18px); font-style:italic; letter-spacing:.12em; color:#c9b36a}
+  #phase{font-size:clamp(12px,1.8vw,15px); letter-spacing:.4em; text-transform:uppercase; color:var(--dim); margin-top:8px}
+  #count{font-size:12px; letter-spacing:.22em; color:var(--dim); text-transform:uppercase}
+  #grid{display:flex; flex-direction:column; gap:2px; align-items:center; margin-bottom:4px}
+  .row{font-family:'Courier New',monospace; font-size:clamp(8px,1.35vw,11px); letter-spacing:.18em;
+    color:#3d3722; display:flex; gap:10px; transition:color .4s}
+  .row.on{color:var(--dim)}
+  .row .t{padding:0 2px; border-radius:2px; transition:all .3s}
+  .row .t.on{color:#fff8e1; background:rgba(212,175,55,.22); text-shadow:0 0 10px rgba(212,175,55,.8)}
+  #ctl{pointer-events:auto; display:flex; gap:10px; align-items:center}
+  button{background:none; border:1px solid rgba(212,175,55,.4); color:var(--gold);
+    font-family:inherit; font-size:12px; letter-spacing:.22em; text-transform:uppercase;
+    padding:9px 18px; cursor:pointer; border-radius:2px; transition:all .25s}
+  button:hover{border-color:var(--gold); background:rgba(212,175,55,.08)}
+  #foot{font-size:10.5px; letter-spacing:.14em; color:#4a4228; text-align:center; line-height:1.7}
+  #foot a{color:#6b5d33; text-decoration:none; border-bottom:1px dotted #6b5d33}
+  #veil{position:fixed; inset:0; background:rgba(5,5,5,.92); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:22px; text-align:center; padding:24px;
+    pointer-events:auto; transition:opacity 1.2s; z-index:5}
+  #veil p{max-width:560px; font-size:clamp(13px,1.9vw,16.5px); line-height:1.75; color:#b7a15c}
+  #veil .t{font-size:clamp(18px,3vw,26px); letter-spacing:.3em; text-transform:uppercase}
+  #veil.hide{opacity:0; pointer-events:none}
+  .mini{font-size:11px !important; color:#6b5d33 !important; letter-spacing:.1em}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <header>
+    <h1>The Name, Breathed</h1>
+    <div class="sub">216 letters &middot; 72 triplets &middot; 12 breaths &middot; 4 silences</div>
+  </header>
+  <div id="trip">
+    <div id="heb" dir="rtl">&nbsp;</div>
+    <div id="dig">&nbsp;</div>
+    <div id="nam">&nbsp;</div>
+    <div id="phase">awaiting</div>
+  </div>
+  <div id="count">&nbsp;</div>
+  <div id="grid"></div>
+  <div id="ctl">
+    <button id="bBegin">Begin</button>
+    <button id="bSound">Sound: on</button>
+    <button id="bPace">Pace: calm</button>
+  </div>
+  <div id="foot">
+    216-digit sequence after Lucien Khan &middot; Shemhamphorasch structure after the Kabbalah &middot; this reading is a design, not a tradition<br>
+    <a href="index.html">the monument</a> &middot; <a href="metatron.html">metatron&rsquo;s cube</a> &middot; <a href="chapter-4.html">chapter four</a>
+  </div>
+</div>
+<div id="veil">
+  <div class="t">How to breathe the Name</div>
+  <p>The 216 digits are twelve readings of one clock &mdash; twelve rows of eighteen, and each row is
+  six triplets. Take <b>one row per breath</b>: inhale while the row gathers, and on the exhale sound its
+  six triplets as Hebrew letter-names &mdash; <i>Aleph, Bet, Gimel&hellip;</i></p>
+  <p>The letters &aleph; (1), &he; (5), &vav; (6) are the breath-letters &mdash; sound them on the air itself.
+  There are exactly seventy-two of them. The breath ripples; it does not march.</p>
+  <p>Twelve breaths. Five clock-stations pass beneath each breath &mdash; sixty in all. After every third
+  breath, a longer silence: the four zeros that were removed from the clock, at the quarter-hours.</p>
+  <p class="mini">inhale 4 &middot; sound 8 &middot; rest 2 &middot; silence at the quarters &mdash; about three minutes for the whole Name</p>
+  <div style="pointer-events:auto"><button id="bVeil">Enter</button></div>
+</div>
+<script>
+'use strict';
+window.__errors=[]; window.addEventListener('error',e=>__errors.push(String(e.message)));
+const ROWS=["112358314594377741","493257291112358314","943777415617853819",
+"112358314594377741","617853819998752796","943777415617853819",
+"998752796516733369","617853819998752796","167333695493257291",
+"998752796516733369","493257291112358314","167333695493257291"];
+const LET=['\u05D0','\u05D1','\u05D2','\u05D3','\u05D4','\u05D5','\u05D6','\u05D7','\u05D8'];
+const NAM=['Aleph','Bet','Gimel','Dalet','He','Vav','Zayin','Chet','Tet'];
+const BREATH=new Set([1,5,6]);
+const TRIP=[]; ROWS.forEach((r,bi)=>{ for(let k=0;k<6;k++) TRIP.push({row:bi, digits:r.slice(k*3,k*3+3)}); });
+
+const Q=new URLSearchParams(location.search);
+const K = Q.get('fast') ? 40 : 1;
+let PACE = Q.get('pace')==='temple' ? {IN:3000,SO:6000,RE:1500,SI:3000} : {IN:4000,SO:8000,RE:2000,SI:4000};
+const D = ms => ms / K;
+const sleep = ms => new Promise(r=>setTimeout(r, ms));
+
+const S = window.__BREATHE = {phase:'idle', breath:0, triplet:-1, ticks:0, sounded:0, silences:0, running:false, done:false};
+
+/* ---------- canvas: the 60-station ring ---------- */
+const cv=document.getElementById('c'), cx=cv.getContext('2d');
+let W,H,R,CX,CY;
+function size(){ W=cv.width=innerWidth*devicePixelRatio; H=cv.height=innerHeight*devicePixelRatio;
+  cx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  CX=innerWidth/2; CY=innerHeight*0.42; R=Math.min(innerWidth,innerHeight)*0.30; }
+addEventListener('resize',size); size();
+const SOCKETS=new Set([14,29,44,59]);          // stations 15,30,45,60 — the removed zeros
+let breathPulse=0;                              // 0..1 pacer, driven by phase
+function draw(){
+  cx.clearRect(0,0,innerWidth,innerHeight);
+  // ring guides
+  cx.strokeStyle='rgba(212,175,55,.10)'; cx.lineWidth=1;
+  cx.beginPath(); cx.arc(CX,CY,R,0,7); cx.stroke();
+  // 12 spokes
+  for(let s=0;s<12;s++){
+    const a=-Math.PI/2 + s*Math.PI/6;
+    const on = S.running && s=== (S.breath-1)%12 && !S.done;
+    cx.strokeStyle= on ? 'rgba(212,175,55,.55)' : 'rgba(212,175,55,.10)';
+    cx.lineWidth= on?1.6:1;
+    cx.beginPath(); cx.moveTo(CX+Math.cos(a)*R*0.18, CY+Math.sin(a)*R*0.18);
+    cx.lineTo(CX+Math.cos(a)*R, CY+Math.sin(a)*R); cx.stroke();
+  }
+  // 60 stations
+  const active = S.ticks%60;
+  for(let i=0;i<60;i++){
+    const a=-Math.PI/2 + i*Math.PI/180*3;
+    const x=CX+Math.cos(a)*R, y=CY+Math.sin(a)*R;
+    if(SOCKETS.has(i)){ cx.strokeStyle='rgba(212,175,55,.30)'; cx.lineWidth=1;
+      cx.beginPath(); cx.arc(x,y,4.5,0,7); cx.stroke(); continue; }
+    const passed = S.done || (S.ticks>i);
+    const isNow = S.running && i===active && !S.done;
+    cx.fillStyle = isNow ? '#fff3cf' : passed ? 'rgba(212,175,55,.85)' : 'rgba(212,175,55,.22)';
+    cx.beginPath(); cx.arc(x,y, isNow?4:2.4, 0,7); cx.fill();
+    if(isNow){ cx.strokeStyle='rgba(212,175,55,.5)'; cx.beginPath(); cx.arc(x,y,8+breathPulse*5,0,7); cx.stroke(); }
+  }
+  // breath pacer (center)
+  const pr = 26 + breathPulse*30;
+  const g=cx.createRadialGradient(CX,CY,0,CX,CY,pr);
+  g.addColorStop(0,'rgba(212,175,55,.20)'); g.addColorStop(1,'rgba(212,175,55,0)');
+  cx.fillStyle=g; cx.beginPath(); cx.arc(CX,CY,pr,0,7); cx.fill();
+  cx.strokeStyle='rgba(212,175,55,.45)'; cx.lineWidth=1;
+  cx.beginPath(); cx.arc(CX,CY,pr,0,7); cx.stroke();
+  requestAnimationFrame(draw);
+}
+draw();
+
+/* ---------- mini grid ---------- */
+const grid=document.getElementById('grid');
+const rowEls=ROWS.map((r,bi)=>{
+  const d=document.createElement('div'); d.className='row';
+  for(let k=0;k<6;k++){ const s=document.createElement('span'); s.className='t'; s.textContent=r.slice(k*3,k*3+3); d.appendChild(s); }
+  grid.appendChild(d); return d;
+});
+
+/* ---------- sound ---------- */
+let audio=null, heVoice=null, soundOn=true;
+function initAudio(){
+  try{ audio=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){}
+  try{
+    const pick=()=>{ heVoice = speechSynthesis.getVoices().find(v=>/^he/i.test(v.lang)) || null; };
+    pick(); speechSynthesis.onvoiceschanged=pick;
+  }catch(e){}
+}
+function tone(f=216, dur=.5, vol=.045){
+  if(!audio||!soundOn) return;
+  try{ const o=audio.createOscillator(), g=audio.createGain();
+    o.frequency.value=f; o.type='sine';
+    g.gain.setValueAtTime(0,audio.currentTime);
+    g.gain.linearRampToValueAtTime(vol,audio.currentTime+.04);
+    g.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+dur);
+    o.connect(g).connect(audio.destination); o.start(); o.stop(audio.currentTime+dur+.05);
+  }catch(e){}
+}
+function speakTrip(t){
+  if(!soundOn) return;
+  const names=t.digits.split('').map(d=>NAM[+d-1]);
+  if(heVoice && K===1){
+    try{ const u=new SpeechSynthesisUtterance(t.digits.split('').map(d=>LET[+d-1]).join(' '));
+      u.voice=heVoice; u.lang='he-IL'; u.rate=.72; speechSynthesis.speak(u); return; }catch(e){}
+  }
+  const sum=t.digits.split('').reduce((a,b)=>a+ +b,0);
+  tone(180+sum*12, .9, .05);
+}
+
+/* ---------- the cycle ---------- */
+const $=id=>document.getElementById(id);
+function showTrip(i){
+  const t=TRIP[i];
+  $('heb').textContent=t.digits.split('').map(d=>LET[+d-1]).join('\u2009');
+  $('dig').textContent=t.digits.split('').join(' ');
+  $('nam').textContent=t.digits.split('').map(d=>NAM[+d-1]).join(' \u00b7 ');
+  rowEls.forEach((r,bi)=>{ r.classList.toggle('on', bi===t.row);
+    [...r.children].forEach((s,k)=>s.classList.toggle('on', bi===t.row && k=== i%6 )); });
+}
+function setPhase(p){ S.phase=p; $('phase').textContent=p; }
+async function pacer(from,to,ms){
+  const t0=performance.now();
+  while(performance.now()-t0 < D(ms)){ breathPulse=from+(to-from)*((performance.now()-t0)/D(ms)); await sleep(30); }
+  breathPulse=to;
+}
+async function cycle(){
+  S.running=true;
+  for(let b=1;b<=12;b++){
+    S.breath=b; $('count').textContent=`breath ${b} / 12`;
+    setPhase('inhale'); await pacer(0,1,PACE.IN);
+    setPhase('sound');
+    pacer(1,0.45,PACE.SO);
+    for(let ti=0;ti<6;ti++){
+      const gi=(b-1)*6+ti;
+      S.triplet=gi; S.sounded++; showTrip(gi); speakTrip(TRIP[gi]);
+      await sleep(D(PACE.SO/6));
+    }
+    setPhase('rest'); await pacer(.45,0,PACE.RE);
+    if(b%3===0){ S.silences++; setPhase('silence \u2014 the removed zero'); await sleep(D(PACE.SI)); }
+  }
+  S.running=false; S.done=true; setPhase('complete');
+  $('phase').textContent='the Name has been breathed';
+  $('count').textContent='216 letters \u00b7 72 triplets \u00b7 12 breaths \u00b7 4 silences';
+  tone(108, 3, .05); setTimeout(()=>tone(216,3,.04), 900);
+}
+/* station ticks: 5 per breath, during breath phases only — the silences suspend the clock */
+(function tickLoop(){
+  if(S.running && (S.phase==='inhale'||S.phase==='sound'||S.phase==='rest')){
+    S.ticks=Math.min(60,S.ticks+1);
+  }
+  setTimeout(tickLoop, D(2800));
+})();
+
+/* ---------- controls ---------- */
+$('bVeil').onclick=()=>{ $('veil').classList.add('hide'); initAudio(); };
+$('bBegin').onclick=()=>{ initAudio(); if(audio&&audio.state==='suspended')audio.resume();
+  if(S.running) return;
+  Object.assign(S,{phase:'idle',breath:0,triplet:-1,ticks:0,sounded:0,silences:0,done:false});
+  $('veil').classList.add('hide'); cycle(); };
+$('bSound').onclick=e=>{ soundOn=!soundOn; e.target.textContent='Sound: '+(soundOn?'on':'off');
+  if(!soundOn) try{speechSynthesis.cancel();}catch(e){} };
+$('bPace').onclick=e=>{ const temple = PACE.IN===4000;
+  PACE = temple ? {IN:3000,SO:6000,RE:1500,SI:3000} : {IN:4000,SO:8000,RE:2000,SI:4000};
+  e.target.textContent='Pace: '+(temple?'temple':'calm'); };
+</script>
+</body>
+</html>
