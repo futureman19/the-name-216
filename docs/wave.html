@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>The Wave of Time — 216</title>
+<style>
+  :root{ --gold:#d4af37; --dim:#8a7a45; }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%; background:#050505; color:var(--gold); overflow:hidden;
+    font-family:'Cormorant Garamond',Georgia,serif; -webkit-user-select:none; user-select:none}
+  #c{position:fixed; inset:0; display:block; touch-action:none}
+  .hud{position:fixed; z-index:2; pointer-events:none}
+  #title{top:18px; left:0; right:0; text-align:center}
+  #title h1{font-size:clamp(18px,3vw,26px); font-weight:500; letter-spacing:.28em; text-transform:uppercase}
+  #title .sub{font-size:11px; letter-spacing:.18em; color:var(--dim); margin-top:5px; text-transform:uppercase}
+  #cap{top:74px; left:0; right:0; text-align:center; font-style:italic; font-size:clamp(13px,1.9vw,16.5px);
+    color:#c9b36a; padding:0 20px; transition:opacity .5s}
+  #ctl{bottom:22px; left:0; right:0; display:flex; justify-content:center; gap:10px; pointer-events:auto}
+  button{background:rgba(5,5,5,.6); border:1px solid rgba(212,175,55,.4); color:var(--gold);
+    font-family:inherit; font-size:12px; letter-spacing:.2em; text-transform:uppercase;
+    padding:9px 16px; cursor:pointer; border-radius:2px; transition:all .25s}
+  button:hover,button.on{border-color:var(--gold); background:rgba(212,175,55,.12)}
+  #foot{bottom:24px; right:22px; font-size:10.5px; color:#6d6449; letter-spacing:.1em; text-align:right; line-height:1.7}
+  #foot a{color:#9c8f6d; text-decoration:none}
+  @media (max-width:760px){ #foot{display:none} }
+</style>
+<script type="importmap">{ "imports": {
+  "three": "https://unpkg.com/three@0.186.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.186.0/examples/jsm/" } }
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud" id="title"><h1>The Wave of Time</h1>
+  <div class="sub">the 216, unrolled &middot; flipped &middot; wrapped &middot; given volume</div></div>
+<div class="hud" id="cap"></div>
+<div class="hud" id="ctl">
+  <button data-s="wave" class="on">1 &middot; Wave</button>
+  <button data-s="flip">2 &middot; Flip</button>
+  <button data-s="ring">3 &middot; Ring</button>
+  <button data-s="particle">4 &middot; Particle</button>
+</div>
+<div class="hud" id="foot">wave choreography after Lucien Khan &middot; computed, not drawn<br>
+  <a href="index.html">the monument</a> &middot; <a href="breathe.html">breathe it</a> &middot; <a href="score.html">the score</a></div>
+
+<script type="module">
+import * as THREE from 'three';
+window.__errors=[]; addEventListener('error',e=>__errors.push(String(e.message)));
+
+/* ---------- the data (computed, not recited) ---------- */
+const ROWS=["112358314594377741","493257291112358314","943777415617853819",
+"112358314594377741","617853819998752796","943777415617853819",
+"998752796516733369","617853819998752796","167333695493257291",
+"998752796516733369","493257291112358314","167333695493257291"];
+const D216 = ROWS.join('').split('').map(Number);
+let _a=0,_b=1; const CLOCK60=[];                       // the 60-clock with its zeros
+for(let i=0;i<60;i++){ [_a,_b]=[_b,_a+_b]; CLOCK60.push(_a%10); }
+const HALF = [ CLOCK60.slice(0,30).reduce((x,y)=>x+y,0), CLOCK60.slice(30).reduce((x,y)=>x+y,0) ];
+
+/* ---------- scene ---------- */
+const cv=document.getElementById('c');
+const R = new THREE.WebGLRenderer({canvas:cv, antialias:true});
+R.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x050505); scene.fog=new THREE.FogExp2(0x050505,.028);
+const cam=new THREE.PerspectiveCamera(50,1,.1,200); cam.position.set(0,2.2,15);
+const grp=new THREE.Group(); scene.add(grp);
+const GOLD=0xd4af37, DIM=0x6b5d33, CYAN=0x9fd8ff;
+
+const N=D216.length, AMP=.42, DX=.105;
+const wavePos=i=>new THREE.Vector3((i-(N-1)/2)*DX, (D216[i]-5)*AMP, 0);
+const flipPos=i=>{const v=wavePos(i); return new THREE.Vector3(v.x*.14, v.y, v.x);};     // stood on its side
+const ringPos=i=>{const k=i%60, a=k/60*Math.PI*2-Math.PI/2, r=4.1+(CLOCK60[k]-5)*AMP;
+  return new THREE.Vector3(Math.cos(a)*r, 0, Math.sin(a)*r);};
+const partPos=i=>{const k=i%60, th=k/60*Math.PI*2, r=4.1+(CLOCK60[k]-5)*AMP, ph=Math.floor(i/60)/60*Math.PI*2;
+  return new THREE.Vector3(r*Math.cos(th)*Math.sin(ph), r*Math.sin(th), r*Math.cos(th)*Math.cos(ph));};
+const STATE_POS={wave:wavePos, flip:flipPos, ring:ringPos, particle:partPos};
+const CAPTIONS={
+ wave:`the 216, unrolled — every pair mirrors across the 5-line; the halves weigh ${HALF[0]} and ${HALF[1]}`,
+ flip:'flipped on its side, it breathes like a wave',
+ ring:'wrapped into a circle — one clock, held in balance; the four zeros are the gaps',
+ particle:'given volume, the wave stands as a particle — a droplet of standing information'};
+
+/* points + line built from the same 216 positions */
+const geo=new THREE.BufferGeometry(), pos=new Float32Array(N*3);
+geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+const pts=new THREE.Points(geo, new THREE.PointsMaterial({color:GOLD, size:.11, transparent:true, opacity:.95}));
+const lineGeo=new THREE.BufferGeometry(), lpos=new Float32Array(N*3);
+lineGeo.setAttribute('position', new THREE.BufferAttribute(lpos,3));
+const line=new THREE.Line(lineGeo, new THREE.LineBasicMaterial({color:DIM, transparent:true, opacity:.55}));
+grp.add(pts,line);
+
+/* the 5-line axis (visible in wave/flip) */
+const axisGeo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-12,0,0), new THREE.Vector3(12,0,0)]);
+const axis=new THREE.Line(axisGeo, new THREE.LineBasicMaterial({color:0x3d3722}));
+grp.add(axis);
+
+/* particle surface (60 x 60 lathe of the ring wave) */
+const PN=3600, pgeo=new THREE.BufferGeometry(), ppos=new Float32Array(PN*3);
+pgeo.setAttribute('position', new THREE.BufferAttribute(ppos,3));
+const surface=new THREE.Points(pgeo, new THREE.PointsMaterial({color:GOLD, size:.05, transparent:true, opacity:.35}));
+surface.visible=false; grp.add(surface);
+function fillSurface(){
+  for(let i=0;i<PN;i++){ const v=partPos(i); ppos[i*3]=v.x; ppos[i*3+1]=v.y; ppos[i*3+2]=v.z; }
+  pgeo.attributes.position.needsUpdate=true;
+}
+fillSurface();
+
+/* ---------- state machine ---------- */
+let state='wave', morph=null;
+const W=window.__WAVE={state, n:N, clockSum:CLOCK60.reduce((a,b)=>a+b,0), halves:HALF};
+function go(s){
+  if(s===state) return;
+  const from=[], to=[];
+  for(let i=0;i<N;i++){ from.push(new THREE.Vector3(pos[i*3],pos[i*3+1],pos[i*3+2])); to.push(STATE_POS[s](i)); }
+  morph={from,to,t:0}; state=s; W.state=s;
+  document.querySelectorAll('#ctl button').forEach(b=>b.classList.toggle('on', b.dataset.s===s));
+  const cap=document.getElementById('cap'); cap.style.opacity=0;
+  setTimeout(()=>{cap.textContent=CAPTIONS[s]; cap.style.opacity=1;},400);
+  axis.visible=(s==='wave'||s==='flip');
+  surface.visible=(s==='particle');
+}
+document.querySelectorAll('#ctl button').forEach(b=> b.onclick=()=>go(b.dataset.s));
+
+/* init in wave */
+for(let i=0;i<N;i++){ const v=wavePos(i); pos.set([v.x,v.y,v.z],i*3); lpos.set([v.x,v.y,v.z],i*3); }
+document.getElementById('cap').textContent=CAPTIONS.wave;
+
+/* ---------- drag rotate + zoom (user moves the object) ---------- */
+let vel={x:0,y:0}, drag=null, dist=15;
+const el=R.domElement;
+el.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY}; el.setPointerCapture(e.pointerId);});
+el.addEventListener('pointermove',e=>{ if(!drag) return;
+  const dx=(e.clientX-drag.x)/innerWidth, dy=(e.clientY-drag.y)/innerHeight;
+  grp.rotation.y+=dx*4; grp.rotation.x+=dy*2.4; vel={x:dy*2.4,y:dx*4}; drag={x:e.clientX,y:e.clientY}; });
+el.addEventListener('pointerup',()=>drag=null);
+el.addEventListener('wheel',e=>{ dist=Math.min(30,Math.max(7,dist+e.deltaY*.01)); });
+let pinch=null;
+el.addEventListener('touchmove',e=>{ if(e.touches.length===2){ e.preventDefault();
+  const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+  if(pinch) dist=Math.min(30,Math.max(7,dist-(d-pinch)*.03)); pinch=d; } },{passive:false});
+el.addEventListener('touchend',()=>pinch=null);
+
+/* ---------- loop ---------- */
+function size(){ R.setSize(innerWidth,innerHeight); cam.aspect=innerWidth/innerHeight; cam.updateProjectionMatrix(); }
+addEventListener('resize',size); size();
+const clock=new THREE.Clock();
+function tick(){
+  requestAnimationFrame(tick);
+  const t=clock.getElapsedTime();
+  if(!drag){ grp.rotation.y+=vel.y*.94; grp.rotation.x+=vel.x*.94; vel.x*=.94; vel.y*=.94; }
+  if(morph){
+    morph.t=Math.min(1,morph.t+.02);
+    const e=morph.t<.5 ? 4*morph.t**3 : 1-((-2*morph.t+2)**3)/2;
+    for(let i=0;i<N;i++){
+      const a=morph.from[i], b=morph.to[i];
+      pos[i*3]=a.x+(b.x-a.x)*e; pos[i*3+1]=a.y+(b.y-a.y)*e; pos[i*3+2]=a.z+(b.z-a.z)*e;
+    }
+    geo.attributes.position.needsUpdate=true;
+    lpos.set(pos); lineGeo.attributes.position.needsUpdate=true;
+    if(morph.t===1) morph=null;
+  }
+  if(state==='flip'){                                   // breathing shimmer
+    for(let i=0;i<N;i++){ const v=flipPos(i);
+      pos[i*3+1]=v.y+Math.sin(t*2.2-i*.28)*.14; }
+    geo.attributes.position.needsUpdate=true;
+    lpos.set(pos); lineGeo.attributes.position.needsUpdate=true;
+  }
+  if(state==='particle'){ const s=1+Math.sin(t*.9)*.035; surface.scale.setScalar(s); surface.rotation.y=t*.12; }
+  if(state==='ring'){ const s=1+Math.sin(t*.9)*.02; pts.scale.setScalar(s); line.scale.setScalar(s); }
+  else { pts.scale.setScalar(1); line.scale.setScalar(1); }
+  cam.position.z+= (dist-cam.position.z)*.08;
+  cam.lookAt(0,0,0);
+  R.render(scene,cam);
+}
+tick();
+</script>
+</body>
+</html>
