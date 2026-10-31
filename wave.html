@@ -40,6 +40,7 @@
   <button data-s="flip">2 &middot; Flip</button>
   <button data-s="ring">3 &middot; Ring</button>
   <button data-s="particle">4 &middot; Particle</button>
+  <button data-s="triangle">5 &middot; Collapse</button>
 </div>
 <div class="hud" id="foot">wave choreography after Lucien Khan &middot; computed, not drawn<br>
   <a href="index.html">the monument</a> &middot; <a href="breathe.html">breathe it</a> &middot; <a href="score.html">the score</a></div>
@@ -74,12 +75,19 @@ const ringPos=i=>{const k=i%60, a=k/60*Math.PI*2-Math.PI/2, r=4.1+(CLOCK60[k]-5)
   return new THREE.Vector3(Math.cos(a)*r, 0, Math.sin(a)*r);};
 const partPos=i=>{const k=i%60, th=k/60*Math.PI*2, r=4.1+(CLOCK60[k]-5)*AMP, ph=Math.floor(i/60)/60*Math.PI*2;
   return new THREE.Vector3(r*Math.cos(th)*Math.sin(ph), r*Math.sin(th), r*Math.cos(th)*Math.cos(ph));};
-const STATE_POS={wave:wavePos, flip:flipPos, ring:ringPos, particle:partPos};
+/* the collapse: 56-105-119 (8-15-17 x7 — verified exact; perimeter = 280 = the clock's sum) */
+const TS=.05, triPath=t=>{                                 // t in [0,280] along the perimeter
+  if(t<56)  return new THREE.Vector3((t-28)*TS, -52.5*TS, 0);
+  if(t<161) return new THREE.Vector3(28*TS, (t-56-52.5)*TS, 0);
+  const u=(t-161)/119; return new THREE.Vector3((28-u*56)*TS, (52.5-u*105)*TS, 0); };
+const triPos=i=>triPath(i/(N-1)*280);
+const STATE_POS={wave:wavePos, flip:flipPos, ring:ringPos, particle:partPos, triangle:triPos};
 const CAPTIONS={
  wave:`the 216, unrolled — every pair mirrors across the 5-line; the halves weigh ${HALF[0]} and ${HALF[1]}`,
  flip:'flipped on its side, it breathes like a wave',
  ring:'wrapped into a circle — one clock, held in balance; the four zeros are the gaps',
- particle:'given volume, the wave stands as a particle — a droplet of standing information'};
+ particle:'given volume, the wave stands as a particle — a droplet of standing information',
+ triangle:'the collapse — 56² + 105² = 119² exactly (3136 + 11025 = 14161) · perimeter 280 = the clock’s sum'};
 
 /* points + line built from the same 216 positions */
 const geo=new THREE.BufferGeometry(), pos=new Float32Array(N*3);
@@ -108,7 +116,8 @@ fillSurface();
 
 /* ---------- state machine ---------- */
 let state='wave', morph=null;
-const W=window.__WAVE={state, n:N, clockSum:CLOCK60.reduce((a,b)=>a+b,0), halves:HALF};
+const W=window.__WAVE={state, n:N, clockSum:CLOCK60.reduce((a,b)=>a+b,0), halves:HALF,
+  triangle:{a:56,b:105,c:119, exact:56*56+105*105===119*119, perimeter:56+105+119}};
 function go(s){
   if(s===state) return;
   const from=[], to=[];
