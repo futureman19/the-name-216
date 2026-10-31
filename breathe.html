@@ -61,7 +61,7 @@
   <div id="grid"></div>
   <div id="ctl">
     <button id="bBegin">Begin</button>
-    <button id="bSound">Sound: on</button>
+    <button id="bSound">Sound: voice</button>
     <button id="bPace">Pace: calm</button>
   </div>
   <div id="foot">
@@ -157,7 +157,24 @@ const rowEls=ROWS.map((r,bi)=>{
 });
 
 /* ---------- sound ---------- */
-let audio=null, heVoice=null, soundOn=true;
+let audio=null, heVoice=null, soundOn=true, soundMode='voice';
+function playNote(d, delayMs){           // digit -> d-th harmonic of 108 Hz
+  if(!audio) return;
+  const t0 = audio.currentTime + delayMs/1000;
+  const dur = Math.max(.4, PACE.SO/18/1000*0.95);
+  try{
+    const o=audio.createOscillator(), o2=audio.createOscillator(), g=audio.createGain();
+    o.frequency.value=d*108; o.type='sine';
+    o2.frequency.value=d*216; o2.type='sine';
+    const g2=audio.createGain(); g2.gain.value=.10; o2.connect(g2).connect(g);
+    o.connect(g);
+    g.gain.setValueAtTime(0,t0);
+    g.gain.linearRampToValueAtTime(.11,t0+.03);
+    g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
+    g.connect(audio.destination);
+    o.start(t0); o.stop(t0+dur+.05); o2.start(t0); o2.stop(t0+dur+.05);
+  }catch(e){}
+}
 function initAudio(){
   try{ audio=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){}
   try{
@@ -183,7 +200,7 @@ function playClip(key, rate){
   a.play().catch(()=>{});
 }
 function cueClip(p){
-  if(!CLIPS.ok || !soundOn) return;
+  if(!CLIPS.ok || soundMode!=='voice') return;
   const key = p.startsWith('silence') ? 'silence' : p;
   if(CLIPS[key]) playClip(key);
 }
@@ -199,8 +216,13 @@ function tone(f=216, dur=.5, vol=.045){
   }catch(e){}
 }
 function speakTrip(t){
-  if(!soundOn) return;
+  if(soundMode==='off') return;
   const ds=t.digits.split('').map(Number);
+  if(soundMode==='tones'){
+    const slotMs = PACE.SO/18;
+    ds.forEach((d,i)=> playNote(d, D(i*slotMs)));
+    return;
+  }
   if(CLIPS.ok){
     const slotMs = PACE.SO/18;
     ds.forEach((d,i)=> setTimeout(()=>{
@@ -271,8 +293,10 @@ $('bBegin').onclick=()=>{ initAudio(); loadClips(); if(audio&&audio.state==='sus
   if(S.running) return;
   Object.assign(S,{phase:'idle',breath:0,triplet:-1,ticks:0,sounded:0,silences:0,done:false});
   $('veil').classList.add('hide'); cycle(); };
-$('bSound').onclick=e=>{ soundOn=!soundOn; e.target.textContent='Sound: '+(soundOn?'on':'off');
-  if(!soundOn) try{speechSynthesis.cancel();}catch(e){} };
+$('bSound').onclick=e=>{ soundMode = soundMode==='voice'?'tones':soundMode==='tones'?'off':'voice';
+  soundOn = soundMode!=='off'; S.mode=soundMode;
+  e.target.textContent='Sound: '+soundMode;
+  if(soundMode!=='voice') try{speechSynthesis.cancel();}catch(e){} };
 $('bPace').onclick=e=>{ const temple = PACE.IN===4000;
   PACE = temple ? {IN:3000,SO:7500,RE:1500,SI:3000} : {IN:4000,SO:10000,RE:2000,SI:4000};
   e.target.textContent='Pace: '+(temple?'temple':'calm'); };
