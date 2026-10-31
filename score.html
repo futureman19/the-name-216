@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Name, In Notation — 216</title>
+<style>
+  :root{ --gold:#d4af37; --dim:#8a7a45; }
+  html,body{ background:#050505; color:var(--gold); margin:0;
+    font-family:'Cormorant Garamond',Georgia,serif; }
+  #wrap{ max-width:1080px; margin:0 auto; padding:28px 14px 40px; }
+  canvas{ display:block; width:100%; height:auto; }
+  .cap{ color:var(--dim); font-size:14px; letter-spacing:.06em; line-height:1.6;
+    max-width:760px; margin:6px auto 26px; text-align:center; }
+  #foot{ text-align:center; font-size:11px; letter-spacing:.14em; color:#4a4228; margin-top:26px; line-height:1.8 }
+  #foot a{ color:#6b5d33; text-decoration:none; border-bottom:1px dotted #6b5d33 }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c" width="2160" height="3280"></canvas>
+  <div class="cap">The Name is not written in the piano's compromise. Equal temperament bends every
+  note to fit the keys; the Name is sung in the overtone series itself — digit <i>d</i> is the
+  <i>d</i>-th harmonic of 108&nbsp;Hz, no translation. The first staff is the approximation
+  (every note drifts ~30&cent; flat; the seventh harmonic has no key at all).
+  The twelve systems below are the true score: one breath each, unmetered as chant,
+  four grand silences, and the horn at the end.</div>
+  <div id="foot">216-digit sequence after Lucien Khan &middot; engraving by the monument, computed live<br>
+  <a href="index.html">the monument</a> &middot; <a href="metatron.html">metatron&rsquo;s cube</a> &middot; <a href="breathe.html">breathe it</a> &middot; <a href="audio/the-name-sung-full.mp3">hear it</a></div>
+</div>
+<script>
+'use strict';
+window.__errors=[]; addEventListener('error',e=>__errors.push(String(e.message)));
+const ROWS=["112358314594377741","493257291112358314","943777415617853819",
+"112358314594377741","617853819998752796","943777415617853819",
+"998752796516733369","617853819998752796","167333695493257291",
+"998752796516733369","493257291112358314","167333695493257291"];
+const LET=['\u05D0','\u05D1','\u05D2','\u05D3','\u05D4','\u05D5','\u05D6','\u05D7','\u05D8'];
+const F0=108, GOLD='#d4af37', DIM='#8a7a45', FAINT='rgba(212,175,55,.16)';
+const cv=document.getElementById('c'), cx=cv.getContext('2d');
+const W=2160, S=(id,size,style)=>cx.font=`${style||''} ${size}px ${id==='m'?'Courier New':'Cormorant Garamond, Georgia, serif'}`;
+const T=(t,x,y,fill,f)=>{ if(f)S(...f); cx.fillStyle=fill||GOLD; cx.fillText(t,x,y); };
+
+/* ---------- pitch math (verified against Python) ---------- */
+const NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const DIAT={0:0,2:1,4:2,5:3,7:4,9:5,11:6};
+const midiOf=f=>69+12*Math.log2(f/440);
+const diatIdx=m=>Math.floor(m/12)*7-7+DIAT[m%12];         // diatonic index (C major grid)
+const scale=[]; for(let d=1;d<=9;d++){
+  const f=F0*d, m=midiOf(f), near=Math.round(m);
+  scale.push({d,f,midi:near,name:NAMES[near%12]+(Math.floor(near/12)-1),cents:Math.round((m-near)*100)});
+}
+window.__SCORE={scale, notesDrawn:0};
+
+/* ---------- PANEL 1: the approximation — grand staff ---------- */
+const PX=170, GY=250, LS=22;                                // line spacing (px), panel-1 origin
+const yOf=m=>GY+4*LS - (diatIdx(m)-diatIdx(64))*LS/2;       // E4 = bottom treble line
+function staff(y0){ cx.strokeStyle='rgba(212,175,55,.5)'; cx.lineWidth=1.4;
+  for(let i=0;i<5;i++){ cx.beginPath(); cx.moveTo(PX,y0+i*LS); cx.lineTo(W-PX,y0+i*LS); cx.stroke(); } }
+function ledger(m,x){ const y=yOf(m);
+  cx.strokeStyle='rgba(212,175,55,.5)'; cx.beginPath(); cx.moveTo(x-26,y); cx.lineTo(x+26,y); cx.stroke(); }
+function notehead(x,y,acc){
+  cx.save(); cx.translate(x,y); cx.rotate(-0.32);
+  cx.fillStyle=GOLD; cx.beginPath(); cx.ellipse(0,0,13,9,0,0,7); cx.fill(); cx.restore();
+  cx.strokeStyle=GOLD; cx.lineWidth=2.4;
+  cx.beginPath(); cx.moveTo(x+11,y-4); cx.lineTo(x+11,y-4-72); cx.stroke();   // stem up
+  if(acc) T(acc, x-46, y+10, GOLD, ['s',44,'italic']);
+}
+T('THE NAME, IN NOTATION', W/2-340, 74, GOLD, ['s',56]);
+T('the scale of the Name, approximated for piano — digit · letter · Hz · piano key · how far the key is wrong', PX, 168, DIM, ['s',30,'italic']);
+staff(GY);                                                  // treble
+staff(GY+7*LS);                                             // bass
+T('treble', PX-92, GY+2*LS+8, DIM, ['s',28,'italic']);
+T('bass', PX-76, GY+9*LS+8, DIM, ['s',28,'italic']);
+scale.forEach((n,i)=>{
+  const x=PX+150+i*196, m=n.midi, y=yOf(m);
+  // ledger lines where needed
+  const aboveTreble = m>77, belowTreble = m<64, inBass = m<=57, belowBass = m<43;
+  if(aboveTreble){ for(let mm=79; mm<=m; mm+=2) if(DIAT[mm%12]!==undefined && [0,2,4,5,7,9,11].includes(mm%12) && (mm-77)%2===1===false){} }
+  for(let mm=77+2; mm<=m; mm+=2) ledger(mm,x);              // above treble (every other = line)
+  for(let mm=64-2; mm>=Math.max(m,58); mm-=2) if(m<64) ledger(mm,x); // between/below handled below
+  for(let mm=41; mm>=m; mm-=2) if(m<43) ledger(mm,x);       // below bass
+  notehead(x,y, n.name.includes('#')?'#':'');
+  T(String(n.d), x-13, y+120, '#fff3cf', ['s',46]);
+  T(LET[n.d-1], x-10, y+176, GOLD, ['s',40]);
+  T(n.f+' Hz', x-40, y+226, DIM, ['m',26]);
+  T(n.name, x-34, y+272, GOLD, ['s',32]);
+  T((n.cents>0?'+':'')+n.cents+'\u00a2', x-40, y+312, n.cents>10?'#e0a040':DIM, ['s',28,'italic']);
+});
+T('harmonic 7 — between F\u266F and G: no key on any piano', PX+2*196+60, GY+11.4*LS+36, '#e0a040', ['s',30,'italic']);
+
+/* ---------- PANEL 2: the true score — 12 breaths ---------- */
+let Y=760;
+T('the true score — twelve breaths, unmetered, as chant', PX, Y-46, DIM, ['s',30,'italic']);
+const LANE=26, ROWH=9*LANE+34, NX0=PX+170, NX1=W-PX-20;
+scale.forEach((n,i)=>{ const y=Y+i*LANE; });                // layout only
+for(let b=0;b<12;b++){
+  const y0=Y+b*ROWH;
+  // 9 harmonic lanes
+  for(let i=0;i<9;i++){ const y=y0+8+i*LANE;
+    cx.strokeStyle=FAINT; cx.lineWidth=1;
+    cx.beginPath(); cx.moveTo(PX+140,y); cx.lineTo(NX1,y); cx.stroke();
+    if(b===0||b===11) T(`${9-i} ${LET[8-i]}`, PX+70, y+9, DIM, ['s',26]);
+  }
+  T('BREATH '+(b+1), PX-10, y0+8+4*LANE+9, b%2?DIM:GOLD, ['s',30,'italic']);
+  T(`${(b*5+1)}–${(b+1)*5}`, NX1+26, y0+8+4*LANE+9, '#4a4228', ['m',24]); // station span
+  // 18 notes on the lanes
+  const pts=[];
+  ROWS[b].split('').forEach((ch,k)=>{
+    const d=+ch, x=NX0+k*(NX1-NX0)/17, y=y0+8+(9-d)*LANE;
+    pts.push([x,y]);
+    __SCORE.notesDrawn++;
+  });
+  cx.strokeStyle='rgba(212,175,55,.30)'; cx.lineWidth=2; cx.beginPath();
+  pts.forEach(([x,y],i)=> i?cx.lineTo(x,y):cx.moveTo(x,y)); cx.stroke();
+  pts.forEach(([x,y])=>{ cx.fillStyle=GOLD; cx.beginPath(); cx.arc(x,y,6.4,0,7); cx.fill(); });
+  // grand silence after breaths 3,6,9,12
+  if((b+1)%3===0){ const y=y0+ROWH-20;
+    cx.fillStyle=GOLD; cx.fillRect(NX0,y-14,10,28);
+    cx.fillRect(NX0+18,y-14,10,28);
+    T('the removed zero — silence', NX0+52, y+6, '#e0a040', ['s',28,'italic']);
+  }
+}
+Y += 12*ROWH+30;
+
+/* ---------- PANEL 3: the horn ---------- */
+T('the horn — tekiah gedolah: all nine harmonics held until breath ends', PX, Y+10, DIM, ['s',30,'italic']);
+for(let i=0;i<9;i++){ const y=Y+56+i*LANE;
+  cx.strokeStyle=FAINT; cx.beginPath(); cx.moveTo(PX+140,y); cx.lineTo(W-PX,y); cx.stroke(); }
+for(let d=1;d<=10;d++){                                     // sustain ties
+  if(d>9) break;
+  const y=Y+56+(9-d)*LANE;
+  cx.fillStyle=GOLD; cx.beginPath(); cx.arc(PX+170,y,7,0,7); cx.fill();
+  cx.strokeStyle='rgba(212,175,55,.5)'; cx.lineWidth=2.5;
+  cx.beginPath(); cx.moveTo(PX+180,y); cx.bezierCurveTo(PX+500,y-10, PX+900,y+10, PX+1300,y); cx.stroke();
+}
+// fermata
+cx.strokeStyle=GOLD; cx.lineWidth=3;
+cx.beginPath(); cx.arc(PX+170, Y+30, 22, Math.PI*1.15, Math.PI*1.85); cx.stroke();
+cx.fillStyle=GOLD; cx.beginPath(); cx.arc(PX+170, Y+22, 4, 0, 7); cx.fill();
+
+/* legend */
+T('unmetered — phrased by breath, as chant · pulse: five stations per breath · calm pace: one breath = 16 s · the cycle spans 216 s',
+  PX, Y+56+9*LANE+60, '#4a4228', ['s',26,'italic']);
+T('__SCORE_READY__', -100, -100, '#000', ['m',10]);          // sentinel (offscreen)
+</script>
+</body>
+</html>
