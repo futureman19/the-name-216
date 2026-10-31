@@ -10,7 +10,7 @@
   html,body { height:100%; overflow:hidden; background:var(--ink); }
   body { font-family:Georgia,'Times New Roman',serif; color:#e8dfc8; }
   #app { position:fixed; inset:0; }
-  canvas.webgl { display:block; }
+  canvas.webgl { display:block; touch-action:none; }
   .hud { position:fixed; z-index:10; pointer-events:none; }
   .hud > * { pointer-events:auto; }
   #title { top:22px; left:26px; }
@@ -23,7 +23,7 @@
   #counter { top:24px; right:28px; text-align:right; }
   #counter .big { font-size:40px; color:var(--gold-hi); letter-spacing:.05em; }
   #counter .sub { font-size:11.5px; color:#9c8f6d; letter-spacing:.14em; margin-top:2px; }
-  #controls { bottom:20px; left:50%; transform:translateX(-50%); display:flex; gap:10px; }
+  #controls { bottom:20px; left:50%; transform:translateX(-50%); display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
   .group { display:flex; gap:6px; background:var(--panel); border:1px solid rgba(212,175,55,.25); border-radius:999px; padding:5px; }
   button { font-family:inherit; font-size:12px; letter-spacing:.1em; background:transparent; color:#cbbf9c;
            border:1px solid transparent; border-radius:999px; padding:7px 14px; cursor:pointer; transition:all .18s; }
@@ -33,6 +33,7 @@
          border-radius:8px; padding:8px 12px; font-size:12.5px; color:var(--gold-hi); display:none; white-space:nowrap; }
   #tip small { color:#9c8f6d; }
   #foot { bottom:20px; right:24px; font-size:10.5px; color:#6d6449; letter-spacing:.1em; max-width:300px; text-align:right; }
+  @media (max-width:760px){ #panel{ display:none; } #foot{ display:none; } #title h1{ font-size:15px; } }
 </style>
 <script type="importmap">
 { "imports": {
@@ -43,22 +44,26 @@
 </head>
 <body>
 <div id="app"></div>
-<div class="hud" id="title"><h1>THE NAME IN METATRON'S CUBE</h1><p>thirteen clocks — one master, twelve directional</p></div>
+<div class="hud" id="title"><h1>THE NAME IN METATRON'S CUBE</h1><p>pull the lattice — it holds the Name inside</p></div>
 <div class="hud" id="panel">
-  <h2>LUCHEN KHAN'S LATTICE</h2>
+  <h2 id="panelTitle">LUCIEN KHAN'S LATTICE</h2>
   <p id="panelText">Thirteen Fibonacci clocks coupled into the figure the temple builders called Metatron's cube. One master clock at the heart; twelve directional clocks around it, each reading eighteen stations from the master. The four zeros are removed — and twelve times eighteen assembles the Name.</p>
   <p style="margin-top:8px;font-size:12px;color:#9c8f6d">Construction after Lucien Khan, <i>Fibonacci Universe</i>.</p>
 </div>
 <div class="hud" id="counter"><div class="big" id="counterBig"></div><div class="sub" id="counterSub"></div></div>
 <div class="hud" id="controls">
-  <div class="group"><button id="replay">⟳ Replay Assembly</button><button id="back">THE NAME — 216</button></div>
+  <div class="group">
+    <button data-form="lattice" class="active">Lattice</button>
+    <button data-form="cube">Cube</button>
+    <button data-form="sphere">Sphere</button>
+  </div>
+  <div class="group"><button id="replay">⟳ Replay</button><button id="back">THE NAME — 216</button></div>
 </div>
 <div class="hud" id="foot">from <i>Lessons From The Future</i> — the proof chapter</div>
 <div id="tip"></div>
 
 <script type="module">
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -79,7 +84,7 @@ const TILE_START={A:56,B:47,C:10,D:19,E:28,F:38};
 const ROW_TILES=['A','B','C','A','D','C','E','D','F','E','B','F'];
 const cells=[]; let idx=0;
 for(let r=0;r<12;r++){ const start=TILE_START[ROW_TILES[r]]-1;
-  for(let c=0;c<18;c++){ cells.push({i:idx,d:+ROWS[r][c],row:r,col:c,
+  for(let c=0;c<18;c++){ cells.push({i:idx,d:+ROWS[r][c],row:r,col:c,node:r+1,
     comp:idx<108?idx+108:idx-108, clockPos:stripped[(start+c)%56]}); idx++; } }
 window.__checks={n:cells.length===216,
   colSums60:[...Array(18)].every((_,c)=>cells.filter(x=>x.col===c).reduce((s,x)=>s+x.d,0)===60),
@@ -94,13 +99,9 @@ renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.08;
 renderer.domElement.classList.add('webgl'); app.appendChild(renderer.domElement);
 const scene=new THREE.Scene(); scene.background=new THREE.Color(0x07060d);
-scene.fog=new THREE.FogExp2(0x07060d,0.013);
+scene.fog=new THREE.FogExp2(0x07060d,0.011);
 const camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,.1,300);
-camera.position.set(0,15,16);
-const controls=new OrbitControls(camera,renderer.domElement);
-controls.enableDamping=true; controls.dampingFactor=.06;
-controls.minDistance=5; controls.maxDistance=50;
-controls.autoRotate=true; controls.autoRotateSpeed=.4;
+let camR=22; const camDir=new THREE.Vector3(0,15,16).normalize();
 const pmrem=new THREE.PMREMGenerator(renderer);
 scene.environment=pmrem.fromScene(new RoomEnvironment(),.04).texture;
 scene.add(new THREE.AmbientLight(0x404060,.5));
@@ -111,7 +112,7 @@ const key=new THREE.DirectionalLight(0xfff2cc,1.1); key.position.set(6,10,7); sc
   g.setAttribute('position',new THREE.BufferAttribute(pos,3));
   scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0x8a7f60,size:.14,transparent:true,opacity:.55}))); }
 
-/* ===== digit textures 0-9 ===== */
+/* ===== digit textures ===== */
 function digitTexture(d,red){
   const cv=document.createElement('canvas'); cv.width=cv.height=256;
   const x=cv.getContext('2d');
@@ -124,51 +125,80 @@ function digitTexture(d,red){
   x.fillText(String(d),128,140);
   const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; return t;
 }
-const group=new THREE.Group(); scene.add(group);
-
-/* ===== lattice geometry — classical 13-circle Metatron (outer rings on the same 6 spokes) ===== */
-const IN_R=3.6, OUT_R=7.2, RING_R=1.5, MASTER_R=2.1;
 const V=(x,y,z)=>new THREE.Vector3(x,y,z);
-const centers=[V(0,0,0)];
-for(let k=0;k<6;k++){const a=(k/6)*Math.PI*2-Math.PI/2;centers.push(V(Math.cos(a)*IN_R,0,Math.sin(a)*IN_R));}
-for(let k=0;k<6;k++){const a=(k/6)*Math.PI*2-Math.PI/2;centers.push(V(Math.cos(a)*OUT_R,0,Math.sin(a)*OUT_R));}
-// ring slot for cell: rows 0-5 inner spokes 1-6, rows 6-11 outer spokes 7-12 — same spoke => complement pairs radial
-function ringSlot(c){
-  const ring=c.row<6?0:1, k=c.row<6?c.row:c.row-6, ctr=centers[1+ring*6+k];
-  const b=(c.col/18)*Math.PI*2-Math.PI/2;
-  return V(ctr.x+RING_R*Math.cos(b),0,ctr.z+RING_R*Math.sin(b));
+const assembly=new THREE.Group(); scene.add(assembly);   // the pull-able whole
+const decor=new THREE.Group(); assembly.add(decor);
+
+/* ===== the 13 nodes & the three forms ===== */
+const RING_R=1.5, MASTER_R=2.1;
+const spokeA=k=>(k/6)*Math.PI*2-Math.PI/2;
+const UP=V(0,1,0);
+function quatTo(dir){ return new THREE.Quaternion().setFromUnitVectors(UP,dir.clone().normalize()); }
+const CUBE_VERTS=[];
+{ const a=4.4;
+  for(const s of [[a,a,0],[a,-a,0],[-a,a,0],[-a,-a,0],[a,0,a],[a,0,-a],[-a,0,a],[-a,0,-a],[0,a,a],[0,a,-a],[0,-a,a],[0,-a,-a]])
+    CUBE_VERTS.push(V(...s)); }
+const nodeForms={lattice:[],cube:[],sphere:[]};
+for(let n=1;n<=12;n++){
+  const ring=n<=6?0:1, k=n<=6?n-1:n-7, a=spokeA(k), r=ring?7.2:3.6;
+  const p=V(Math.cos(a)*r,0,Math.sin(a)*r);
+  nodeForms.lattice.push({p, q:new THREE.Quaternion()});
+  const cp=CUBE_VERTS[n-1];
+  nodeForms.cube.push({p:cp, q:quatTo(cp)});
 }
-function masterStation(clockPos,y=0){
-  const a=(clockPos/60)*Math.PI*2-Math.PI/2;
-  return V(Math.cos(a)*MASTER_R,y,Math.sin(a)*MASTER_R);
+{ const R=6.6;
+  for(let n=1;n<=12;n++){
+    const y=1-2*((n-1)+.5)/12, rr=Math.sqrt(1-y*y)*R, th=(n-1)*2.39996323;
+    const p=V(rr*Math.cos(th),y*R,rr*Math.sin(th));
+    nodeForms.sphere.push({p, q:quatTo(p)});
+  } }
+const nodes=[{pos:V(0,0,0),quat:new THREE.Quaternion()}]; // 0 = master
+for(let n=1;n<=12;n++) nodes.push({pos:nodeForms.lattice[n-1].p.clone(), quat:nodeForms.lattice[n-1].q.clone()});
+
+/* ===== cell targets per form ===== */
+function localRing(c){ const b=(c.col/18)*Math.PI*2-Math.PI/2; return V(Math.cos(b)*RING_R,0,Math.sin(b)*RING_R); }
+const cellTargets={lattice:[],cube:[],sphere:[]};
+for(const c of cells){
+  const nf=nodeForms.lattice[c.node-1];
+  cellTargets.lattice.push(nf.p.clone().add(localRing(c)));
+  const p=c.i, x=p%6, y=((p/6)|0)%6, z=((p/36)|0);
+  cellTargets.cube.push(V((x-2.5)*1.12,(y-2.5)*1.12,(z-2.5)*1.12));
+  const yy=1-2*(c.i+.5)/216, rr=Math.sqrt(1-yy*yy)*5.6, th=c.i*2.39996323;
+  cellTargets.sphere.push(V(rr*Math.cos(th),yy*5.6,rr*Math.sin(th)));
 }
 
-/* decor: circles + web + master ring (opacity animated) */
-const decor=new THREE.Group(); group.add(decor);
+/* ===== decor: node rings + web + master ring ===== */
 const decorMats=[];
-function mkLine(pts,col,op,loop=false){
-  const m=new THREE.LineBasicMaterial({color:col,transparent:true,opacity:0});
-  m.userData={target:op};
+function regMat(m,t){ m.userData={target:t}; decorMats.push(m); return m; }
+const ringLines=[];
+{ const pts=[]; for(let i=0;i<48;i++){const t=(i/48)*Math.PI*2;pts.push(V(Math.cos(t)*RING_R,0,Math.sin(t)*RING_R));}
   const g=new THREE.BufferGeometry().setFromPoints(pts);
-  const l=loop?new THREE.LineLoop(g,m):new THREE.Line(g,m);
-  decorMats.push(m); decor.add(l); return l;
-}
-for(const c of centers){ const pts=[]; for(let i=0;i<72;i++){const t=(i/72)*Math.PI*2;pts.push(V(c.x+RING_R*Math.cos(t),0,c.z+RING_R*Math.sin(t)));} mkLine(pts,0xd4af37,.24,true); }
-{ const web=[]; for(let i=0;i<13;i++)for(let j=i+1;j<13;j++){web.push(centers[i],centers[j]);}
-  const m=new THREE.LineBasicMaterial({color:0xd4af37,transparent:true,opacity:0});
-  m.userData={target:.09};
-  const l=new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(web),m);
-  decorMats.push(m); decor.add(l); }
+  for(let n=1;n<=12;n++){ const l=new THREE.LineLoop(g,regMat(new THREE.LineBasicMaterial({color:0xd4af37,transparent:true,opacity:0}),.26)); decor.add(l); ringLines.push(l); } }
 { const pts=[]; for(let i=0;i<72;i++){const t=(i/72)*Math.PI*2;pts.push(V(Math.cos(t)*MASTER_R,0,Math.sin(t)*MASTER_R));}
-  mkLine(pts,0xd4af37,.5,true); }
+  decor.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts),regMat(new THREE.LineBasicMaterial({color:0xd4af37,transparent:true,opacity:0}),.5))); }
+let webGeo, webPos;
+{ const pairs=[]; for(let i=0;i<13;i++)for(let j=i+1;j<13;j++)pairs.push([i,j]);
+  webPos=new Float32Array(pairs.length*2*3); webGeo=new THREE.BufferGeometry();
+  webGeo.setAttribute('position',new THREE.BufferAttribute(webPos,3));
+  decor.userData.pairs=pairs;
+  decor.add(new THREE.LineSegments(webGeo,regMat(new THREE.LineBasicMaterial({color:0xd4af37,transparent:true,opacity:0}),.09))); }
+function updateDecor(){
+  for(let n=1;n<=12;n++){ const l=ringLines[n-1]; l.position.copy(nodes[n].pos); l.quaternion.copy(nodes[n].quat); }
+  const pairs=decor.userData.pairs;
+  for(let k=0;k<pairs.length;k++){ const i=pairs[k][0], j=pairs[k][1];
+    webPos[k*6]=nodes[i].pos.x; webPos[k*6+1]=nodes[i].pos.y; webPos[k*6+2]=nodes[i].pos.z;
+    webPos[k*6+3]=nodes[j].pos.x; webPos[k*6+4]=nodes[j].pos.y; webPos[k*6+5]=nodes[j].pos.z; }
+  webGeo.attributes.position.needsUpdate=true;
+}
 
-/* master clock digits (60 sprites; zeros red) */
+/* ===== master clock (60 sprites, zeros red) ===== */
 const masterSprites=[];
 for(let p=1;p<=60;p++){
   const d=fibU[p], zero=(d===0);
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:digitTexture(d,zero),transparent:true,opacity:0,depthWrite:false}));
-  sp.position.copy(masterStation(p)); sp.scale.setScalar(.0001);
-  sp.userData={pos:p,zero}; group.add(sp); masterSprites.push(sp);
+  const a=(p/60)*Math.PI*2-Math.PI/2;
+  sp.position.set(Math.cos(a)*MASTER_R,0,Math.sin(a)*MASTER_R); sp.scale.setScalar(.0001);
+  sp.userData={pos:p,zero}; assembly.add(sp); masterSprites.push(sp);
 }
 
 /* ===== the 216 cells (9 instanced meshes) ===== */
@@ -180,10 +210,11 @@ for(let d=1;d<=9;d++){
   const m=new THREE.InstancedMesh(boxGeo,new THREE.MeshStandardMaterial({
     map:tex,emissiveMap:tex,emissive:new THREE.Color(0xd4af37),emissiveIntensity:.85,
     roughness:.35,metalness:.55}),FREQ[d]);
-  m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); group.add(m); meshes[d]=m;
+  m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); assembly.add(m); meshes[d]=m;
 }
 { const fill={1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0};
   for(const c of cells){ cellMesh[c.i]=meshes[c.d]; cellInst[c.i]=fill[c.d]++; } }
+const cellWorld=cells.map(()=>V(0,0,0));
 
 /* glow sprites */
 function glowTexture(){ const cv=document.createElement('canvas'); cv.width=cv.height=128;
@@ -192,7 +223,7 @@ function glowTexture(){ const cv=document.createElement('canvas'); cv.width=cv.h
   x.fillStyle=g; x.fillRect(0,0,128,128); const t=new THREE.CanvasTexture(cv); t.colorSpace=THREE.SRGBColorSpace; return t; }
 const glowTex=glowTexture(); const sprites=[];
 for(let i=0;i<40;i++){ const s=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:0}));
-  s.scale.setScalar(2); group.add(s); sprites.push({s,t:0}); }
+  s.scale.setScalar(2); assembly.add(s); sprites.push({s,t:0}); }
 let spriteCursor=0;
 function flash(pos,strength=1){ const it=sprites[spriteCursor++%sprites.length]; it.s.position.copy(pos); it.t=strength; }
 
@@ -204,56 +235,126 @@ composer.addPass(new OutputPass());
 
 /* ===== HUD ===== */
 const counterBig=document.getElementById('counterBig'), counterSub=document.getElementById('counterSub'), tip=document.getElementById('tip');
+const panelTitle=document.getElementById('panelTitle'), panelText=document.getElementById('panelText');
+const FORM_PANELS={
+  lattice:["LUCIEN KHAN'S LATTICE","Thirteen Fibonacci clocks coupled into Metatron's cube — one master at the heart, twelve directional around it, each reading eighteen stations from the master. The four zeros are removed; twelve times eighteen assembles the Name. Pull it — it turns."],
+  cube:["THE CUBE","The lattice closes into the solid the thirteen spheres make when they pack tight — and the Name folds into six by six by six. The cube was always inside the figure; the figure was always inside the number."],
+  sphere:["THE SPHERE","The lattice opens into a sphere — 216 stations at golden-angle intervals, the Fibonacci spiral closed into a ball. The cube is a sphere remembered; the sphere is a cube forgiven."]
+};
 document.getElementById('back').addEventListener('click',()=>{ location.href='index.html'; });
-document.getElementById('replay').addEventListener('click',()=>{ startAssembly(); });
 
-/* ===== assembly choreography (deterministic on simTime) ===== */
+/* ===== choreography + morph state ===== */
 const T={circles:1.4, master:2.6, voids:1.6, assemble:7.2};
-let simTime=0, t0=0;
-function startAssembly(){ t0=simTime; for(const c of cells) c.launched=false; }
+let simTime=0, t0=0, currentForm='lattice';
+let morph=null;
 const ease=t=>t*t*(3-2*t);
 function cellTiming(c){ return {start:t0+T.circles+T.master+T.voids + c.row*.42 + c.col*.028, dur:.85}; }
+function startAssembly(){
+  t0=simTime; morph=null; currentForm='lattice';
+  for(let n=1;n<=12;n++){ nodes[n].pos.copy(nodeForms.lattice[n-1].p); nodes[n].quat.copy(nodeForms.lattice[n-1].q); }
+  document.querySelectorAll('[data-form]').forEach(b=>b.classList.toggle('active',b.dataset.form==='lattice'));
+  const F=FORM_PANELS.lattice; panelTitle.textContent=F[0]; panelText.textContent=F[1];
+  for(const c of cells) c.launched=false;
+}
+document.getElementById('replay').addEventListener('click',startAssembly);
+function goForm(name){
+  if(name===currentForm) return;
+  morph={from:cellWorld.map(v=>v.clone()),
+         nodeFrom:nodes.slice(1).map(n=>({p:n.pos.clone(),q:n.quat.clone()})),
+         to:name,t:0,done:false};
+  currentForm=name;
+  document.querySelectorAll('[data-form]').forEach(b=>b.classList.toggle('active',b.dataset.form===name));
+  const F=FORM_PANELS[name]; panelTitle.textContent=F[0]; panelText.textContent=F[1];
+}
+document.querySelectorAll('[data-form]').forEach(b=>b.addEventListener('click',()=>goForm(b.dataset.form)));
 
-const ray=new THREE.Raycaster(); const mouse=new THREE.Vector2(); let hover=-1;
-addEventListener('pointermove',e=>{ mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);
+/* ===== pull interaction (structure, with momentum) ===== */
+const vel={x:0,y:0}; let dragging=false; const pointers=new Map(); let pinchD=0;
+const cvs=renderer.domElement;
+cvs.addEventListener('pointerdown',e=>{ pointers.set(e.pointerId,{x:e.clientX,y:e.clientY}); dragging=true; vel.x=vel.y=0;
+  if(pointers.size===2){ const p=[...pointers.values()]; pinchD=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y); } });
+cvs.addEventListener('pointermove',e=>{
+  if(pointers.has(e.pointerId)){
+    const prev=pointers.get(e.pointerId);
+    if(pointers.size===1){ const dx=e.clientX-prev.x, dy=e.clientY-prev.y;
+      assembly.rotation.y+=dx*.005; assembly.rotation.x+=dy*.005;
+      assembly.rotation.x=Math.max(-1.35,Math.min(1.35,assembly.rotation.x));
+      vel.y=dx*.005; vel.x=dy*.005; }
+    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pointers.size===2){ const p=[...pointers.values()]; const d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
+      camR=Math.max(8,Math.min(46,camR-(d-pinchD)*.03)); pinchD=d; }
+  }
+  mouse.set(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);
   tip.style.left=(e.clientX+16)+'px'; tip.style.top=(e.clientY+10)+'px'; });
-addEventListener('pointerdown',()=>{controls.autoRotate=false;});
+const endP=e=>{ pointers.delete(e.pointerId); if(pointers.size===0) dragging=false; };
+cvs.addEventListener('pointerup',endP); cvs.addEventListener('pointercancel',endP);
+cvs.addEventListener('wheel',e=>{ e.preventDefault(); camR=Math.max(8,Math.min(46,camR+e.deltaY*.015)); },{passive:false});
 
+/* ===== hover ===== */
+const ray=new THREE.Raycaster(); const mouse=new THREE.Vector2(-2,-2); let hover=-1;
+
+/* ===== main loop ===== */
 const clock=new THREE.Clock();
-const tmpM=new THREE.Matrix4(), tmpS=new THREE.Vector3();
+const tmpM=new THREE.Matrix4(), tmpV=new THREE.Vector3();
 function frame(dt,t){
   const local=t-t0;
-  // decor ramp
   const dOp=ease(Math.min(1,Math.max(0,local/T.circles)));
   for(const m of decorMats) m.opacity=(m.userData.target??0)*dOp;
-  // master digits
+  // master clock sequence
   for(const sp of masterSprites){
     const p=sp.userData.pos;
     const appear=ease(Math.min(1,Math.max(0,(local-T.circles-(p-1)*(T.master/60))/.3)));
     let op=appear*.95, sc=appear*.5;
     if(sp.userData.zero){
       const vf=Math.min(1,Math.max(0,(local-T.circles-T.master)/T.voids));
-      if(vf>0){ const flashPhase=Math.sin(vf*Math.PI*4)>0?.9:.25; op=appear*(vf<1?flashPhase:.06); }
+      if(vf>0){ const fp=Math.sin(vf*Math.PI*4)>0?.9:.25; op=appear*(vf<1?fp:.06); }
     }
     sp.material.opacity=op; sp.scale.setScalar(Math.max(.0001,sc));
   }
+  // morph progress
+  if(morph){
+    morph.t=Math.min(1,morph.t+dt/1.6);
+    for(let n=1;n<=12;n++){
+      const nt=ease(Math.min(1,Math.max(0,(morph.t-(n-1)*.04)/.9)));
+      const tgt=nodeForms[morph.to][n-1], src=morph.nodeFrom[n-1];
+      nodes[n].pos.lerpVectors(src.p,tgt.p,nt);
+      nodes[n].quat.slerpQuaternions(src.q,tgt.q,nt);
+    }
+    if(morph.t>=1) morph.done=true;
+  }
+  updateDecor();
   // cells
   let placed=0;
   for(const c of cells){
     const tm=cellTiming(c), p=Math.min(1,Math.max(0,(t-tm.start)/tm.dur));
-    const from=masterStation(c.clockPos,0), to=ringSlot(c);
-    const pos=new THREE.Vector3().lerpVectors(from,to,ease(p));
-    pos.y=Math.sin(p*Math.PI)*1.6;
     if(p>=1) placed++;
-    if(p>=1&&!c.launched){ c.launched=true; flash(to,.9); }
-    const s=p<=0?.0001:.62;
+    let pos;
+    if(p<1&&!morph){
+      const a=(c.clockPos/60)*Math.PI*2-Math.PI/2;
+      tmpV.set(Math.cos(a)*MASTER_R,0,Math.sin(a)*MASTER_R);
+      pos=new THREE.Vector3().lerpVectors(tmpV,cellTargets.lattice[c.i],ease(p));
+      pos.y+=Math.sin(p*Math.PI)*1.6;
+    } else {
+      if(currentForm==='lattice'){
+        pos=nodes[c.node].pos.clone().add(localRing(c).applyQuaternion(nodes[c.node].quat));
+      } else {
+        pos=cellTargets[currentForm][c.i].clone();
+      }
+      if(morph&&!morph.done){
+        const mt=ease(Math.min(1,Math.max(0,(morph.t-(c.i%24)*.012)/.92)));
+        pos.lerpVectors(morph.from[c.i],pos,mt);
+      }
+    }
+    if(p>=1&&!c.launched){ c.launched=true; flash(pos,.9); }
+    cellWorld[c.i].copy(pos);
+    const s=(p<=0&&!morph)?.0001:.62;
     tmpM.makeScale(s,s,s); tmpM.setPosition(pos.x,pos.y,pos.z);
     cellMesh[c.i].setMatrixAt(cellInst[c.i],tmpM);
   }
   for(let d=1;d<=9;d++) meshes[d].instanceMatrix.needsUpdate=true;
   counterBig.textContent=placed>=216?'216':String(placed);
   counterSub.textContent=placed>=216?'THE NAME, ASSEMBLED':'PLACING / 216';
-  if(placed>=216&&!frame.stamped){ frame.stamped=true; flash(V(0,1,0),3); }
+  if(placed>=216&&!frame.stamped){ frame.stamped=true; flash(V(0,1.5,0),3); }
   if(placed<216) frame.stamped=false;
   // hover
   ray.setFromCamera(mouse,camera);
@@ -266,17 +367,27 @@ function frame(dt,t){
       const spoke=(c.row<6?c.row:c.row-6)+1, ringName=c.row<6?'inner':'outer';
       tip.style.display='block';
       tip.innerHTML=`digit <b>${c.d}</b> · directional clock ${spoke} (${ringName}) · station ${c.col+1} of 18<br><small>reads the master from station ${c.clockPos} · pair: ${pc.d} on the same spoke (${c.d}+${pc.d}=10)</small>`;
-      flash(ringSlot(c),.4); flash(ringSlot(pc),.8);
+      flash(cellWorld[c.i],.35); flash(cellWorld[pc.i],.7);
     }
   } else { hover=-1; tip.style.display='none'; }
   for(const it of sprites){ if(it.t>0){ it.t=Math.max(0,it.t-dt*2.2); it.s.material.opacity=it.t; it.s.scale.setScalar(1.8+(1-it.t)*1.4); } }
-  controls.update(); composer.render();
+  // inertia + idle drift + camera
+  if(!dragging){
+    assembly.rotation.y+=vel.y; assembly.rotation.x+=vel.x;
+    assembly.rotation.x=Math.max(-1.35,Math.min(1.35,assembly.rotation.x));
+    vel.x*=.95; vel.y*=.95;
+    if(Math.abs(vel.y)<.0004) assembly.rotation.y+=dt*.12;
+  }
+  camera.position.copy(camDir).multiplyScalar(camR);
+  camera.lookAt(0,0,0);
+  composer.render();
 }
 function tick(){ requestAnimationFrame(tick); const dt=Math.min(clock.getDelta(),.1); simTime+=dt; frame(dt,simTime); }
 addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight); composer.setSize(innerWidth,innerHeight); });
 
-window.__NAME216={ready:true,cells,scene,renderer,camera,
+window.__NAME216={ready:true,cells,nodes,assembly,scene,renderer,camera,goForm,
+  getVel:()=>({...vel}),
   pump:(n,dtEach=1/30)=>{for(let k=0;k<n;k++){simTime+=dtEach;frame(dtEach,simTime);}}};
 startAssembly(); tick();
 </script>
