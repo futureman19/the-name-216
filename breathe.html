@@ -78,7 +78,7 @@
   There are exactly seventy-two of them. The breath ripples; it does not march.</p>
   <p>Twelve breaths. Five clock-stations pass beneath each breath &mdash; sixty in all. After every third
   breath, a longer silence: the four zeros that were removed from the clock, at the quarter-hours.</p>
-  <p class="mini">inhale 4 &middot; sound 8 &middot; rest 2 &middot; silence at the quarters &mdash; about three minutes for the whole Name</p>
+  <p class="mini">gather 8 &middot; inhale 4 &middot; sound 10 &middot; rest 2 &middot; silence at the quarters &mdash; the cycle spans 216 seconds</p>
   <div style="pointer-events:auto"><button id="bVeil">Enter</button></div>
 </div>
 <script>
@@ -95,7 +95,7 @@ const TRIP=[]; ROWS.forEach((r,bi)=>{ for(let k=0;k<6;k++) TRIP.push({row:bi, di
 
 const Q=new URLSearchParams(location.search);
 const K = Q.get('fast') ? 40 : 1;
-let PACE = Q.get('pace')==='temple' ? {IN:3000,SO:6000,RE:1500,SI:3000} : {IN:4000,SO:8000,RE:2000,SI:4000};
+let PACE = Q.get('pace')==='temple' ? {IN:3000,SO:7500,RE:1500,SI:3000} : {IN:4000,SO:10000,RE:2000,SI:4000};
 const D = ms => ms / K;
 const sleep = ms => new Promise(r=>setTimeout(r, ms));
 
@@ -165,6 +165,29 @@ function initAudio(){
     pick(); speechSynthesis.onvoiceschanged=pick;
   }catch(e){}
 }
+/* ---------- voice clips (supertonic, see scripts/gen_voice.py) ---------- */
+const CLIPS = window.__CLIPS = {ready:0, ok:false};
+function loadClips(){
+  if(CLIPS._loaded) return; CLIPS._loaded=true;
+  const mk=src=>{ const a=new Audio(src); a.preload='auto';
+    a.addEventListener('canplaythrough',()=>{a._ok=true; CLIPS.ready++; if(CLIPS.ready>=13)CLIPS.ok=true;},{once:true});
+    a.addEventListener('error',()=>{a._bad=true;},{once:true}); return a; };
+  for(let d=1;d<=9;d++) CLIPS['L'+d]=mk(`audio/letters/${d}.mp3`);
+  for(const c of ['inhale','rest','silence','complete']) CLIPS[c]=mk(`audio/cues/${c}.mp3`);
+}
+function playClip(key, rate){
+  const src = CLIPS[key];
+  if(!src || !src._ok) return;
+  const a = new Audio(src.currentSrc || src.src);
+  if(rate) a.playbackRate = rate;
+  a.play().catch(()=>{});
+}
+function cueClip(p){
+  if(!CLIPS.ok || !soundOn) return;
+  const key = p.startsWith('silence') ? 'silence' : p;
+  if(CLIPS[key]) playClip(key);
+}
+
 function tone(f=216, dur=.5, vol=.045){
   if(!audio||!soundOn) return;
   try{ const o=audio.createOscillator(), g=audio.createGain();
@@ -177,7 +200,17 @@ function tone(f=216, dur=.5, vol=.045){
 }
 function speakTrip(t){
   if(!soundOn) return;
-  const names=t.digits.split('').map(d=>NAM[+d-1]);
+  const ds=t.digits.split('').map(Number);
+  if(CLIPS.ok){
+    const slotMs = PACE.SO/18;
+    ds.forEach((d,i)=> setTimeout(()=>{
+      const base = CLIPS['L'+d];
+      const rate = base && base.duration ? Math.min(1.6, Math.max(1, base.duration/(slotMs/1000)*0.96)) : 1;
+      playClip('L'+d, rate>1.02?rate:1);
+    }, D(i*slotMs)));
+    return;
+  }
+  const names=ds.map(d=>NAM[d-1]);
   if(heVoice && K===1){
     try{ const u=new SpeechSynthesisUtterance(t.digits.split('').map(d=>LET[+d-1]).join(' '));
       u.voice=heVoice; u.lang='he-IL'; u.rate=.72; speechSynthesis.speak(u); return; }catch(e){}
@@ -196,7 +229,7 @@ function showTrip(i){
   rowEls.forEach((r,bi)=>{ r.classList.toggle('on', bi===t.row);
     [...r.children].forEach((s,k)=>s.classList.toggle('on', bi===t.row && k=== i%6 )); });
 }
-function setPhase(p){ S.phase=p; $('phase').textContent=p; }
+function setPhase(p){ S.phase=p; $('phase').textContent=p; cueClip(p); }
 async function pacer(from,to,ms){
   const t0=performance.now();
   while(performance.now()-t0 < D(ms)){ breathPulse=from+(to-from)*((performance.now()-t0)/D(ms)); await sleep(30); }
@@ -204,6 +237,7 @@ async function pacer(from,to,ms){
 }
 async function cycle(){
   S.running=true;
+  setPhase('gather'); await pacer(0,.6,8000);   // the runway — 8s, so the whole utterance spans 216 seconds
   for(let b=1;b<=12;b++){
     S.breath=b; $('count').textContent=`breath ${b} / 12`;
     setPhase('inhale'); await pacer(0,1,PACE.IN);
@@ -220,6 +254,7 @@ async function cycle(){
   S.running=false; S.done=true; setPhase('complete');
   $('phase').textContent='the Name has been breathed';
   $('count').textContent='216 letters \u00b7 72 triplets \u00b7 12 breaths \u00b7 4 silences';
+  playClip('complete');
   tone(108, 3, .05); setTimeout(()=>tone(216,3,.04), 900);
 }
 /* station ticks: 5 per breath, during breath phases only — the silences suspend the clock */
@@ -227,19 +262,19 @@ async function cycle(){
   if(S.running && (S.phase==='inhale'||S.phase==='sound'||S.phase==='rest')){
     S.ticks=Math.min(60,S.ticks+1);
   }
-  setTimeout(tickLoop, D(2800));
+  setTimeout(tickLoop, D((PACE.IN+PACE.SO+PACE.RE)/5));
 })();
 
 /* ---------- controls ---------- */
-$('bVeil').onclick=()=>{ $('veil').classList.add('hide'); initAudio(); };
-$('bBegin').onclick=()=>{ initAudio(); if(audio&&audio.state==='suspended')audio.resume();
+$('bVeil').onclick=()=>{ $('veil').classList.add('hide'); initAudio(); loadClips(); };
+$('bBegin').onclick=()=>{ initAudio(); loadClips(); if(audio&&audio.state==='suspended')audio.resume();
   if(S.running) return;
   Object.assign(S,{phase:'idle',breath:0,triplet:-1,ticks:0,sounded:0,silences:0,done:false});
   $('veil').classList.add('hide'); cycle(); };
 $('bSound').onclick=e=>{ soundOn=!soundOn; e.target.textContent='Sound: '+(soundOn?'on':'off');
   if(!soundOn) try{speechSynthesis.cancel();}catch(e){} };
 $('bPace').onclick=e=>{ const temple = PACE.IN===4000;
-  PACE = temple ? {IN:3000,SO:6000,RE:1500,SI:3000} : {IN:4000,SO:8000,RE:2000,SI:4000};
+  PACE = temple ? {IN:3000,SO:7500,RE:1500,SI:3000} : {IN:4000,SO:10000,RE:2000,SI:4000};
   e.target.textContent='Pace: '+(temple?'temple':'calm'); };
 </script>
 </body>
